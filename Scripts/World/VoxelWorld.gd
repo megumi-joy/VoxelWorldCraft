@@ -7,9 +7,24 @@ var noise = FastNoiseLite.new()
 @export var render_distance = 4
 @export var player: Node3D
 
+var chunk_material: StandardMaterial3D
+
 func _ready():
+	var tex_gen = TextureGenerator.new()
+	add_child(tex_gen)
+	# tex_gen will set chunk_material on _ready, but we need to wait or verify.
+	# Actually, _ready of child runs before _ready of parent? No, Parent ready is last.
+	# So if we add_child here, its _ready runs immediately upon entering tree.
+	# But TextureGenerator expects get_parent() to be VoxelWorld.
+	
 	noise.seed = randi()
 	noise.frequency = 0.01
+
+	# Setup TimeCycle (procedural setup or just rely on manual scene setup?)
+	# Let's act as if we added it in the scene, but code access is cleaner if we ensure it exists.
+	# For now, let's just make the script available and add it to the scene manually or code.
+	# Let's add it via code to VoxelWorld for simplicity or parent World.
+	pass # Proceed to scene update logic
 
 func _process(_delta):
 	if player:
@@ -26,7 +41,7 @@ func update_chunks(center_chunk: Vector2i):
 				create_chunk(pos)
 
 func create_chunk(pos: Vector2i):
-	var chunk = Chunk.new(pos, noise)
+	var chunk = Chunk.new(pos, noise, chunk_material)
 	add_child(chunk)
 	chunk.global_position = Vector3(pos.x * Chunk.CHUNK_SIZE.x, 0, pos.y * Chunk.CHUNK_SIZE.z)
 	chunks[pos] = chunk

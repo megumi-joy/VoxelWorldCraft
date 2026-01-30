@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3 uid="uid://world123456"]
+[gd_scene load_steps=6 format=3 uid="uid://world123456"]
 
 [ext_resource type="Script" path="res://Scripts/World/VoxelWorld.gd" id="1_world"]
+[ext_resource type="Script" path="res://Scripts/World/TimeCycle.gd" id="2_time"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -27,3 +28,8 @@ script = ExtResource("1_world")
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("res://Scenes/Player.tscn")
 spawn_path = NodePath(".")
+
+[node name="TimeCycle" type="Node" parent="." node_paths=PackedStringArray("sun", "environment")]
+script = ExtResource("2_time")
+sun = NodePath("../DirectionalLight3D")
+environment = NodePath("../WorldEnvironment")
