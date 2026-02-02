@@ -75,6 +75,22 @@ func _ready():
 	ctable.type = ItemData.ItemType.BLOCK
 	ctable.block_id = 9
 	items[9] = ctable
+	
+	# ID 11: Apple
+	var apple = ItemData.new()
+	apple.id = 11
+	apple.name = "Apple"
+	apple.type = ItemData.ItemType.CONSUMABLE
+	apple.nutrition_value = 20.0
+	items[11] = apple
+	
+	# ID 12: Sword
+	var sword = ItemData.new()
+	sword.id = 12
+	sword.name = "Iron Sword"
+	sword.type = ItemData.ItemType.TOOL
+	sword.damage_value = 10.0
+	items[12] = sword
 
 func get_item(id: int) -> ItemData:
 	if items.has(id):

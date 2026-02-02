@@ -11,6 +11,8 @@ var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var camera = $Head/Camera3D
 @onready var raycast = $Head/Camera3D/RayCast3D
 
+@onready var stats = $PlayerStats # Ensure this matches Scene tree
+
 @onready var hotbar_ui = $HUD/HotbarUI
 var selected_block_id: int = 1 # Default Dirt
 
@@ -18,6 +20,20 @@ func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
 	
+	if stats:
+		stats.died.connect(_on_death)
+		
+		# Connect HUD Bars
+		var hud = get_node_or_null("HUD")
+		if hud:
+			var health_bar = hud.get_node_or_null("HealthBar")
+			if health_bar:
+				stats.health_changed.connect(func(val, max_val): health_bar.value = (val / max_val) * 100)
+			
+			var hunger_bar = hud.get_node_or_null("HungerBar")
+			if hunger_bar:
+				stats.hunger_changed.connect(func(val, max_val): hunger_bar.value = (val / max_val) * 100)
+		
 	# Setup WASD if not defined
 	add_input_mapping("move_forward", KEY_W)
 	add_input_mapping("move_backward", KEY_S)
@@ -100,27 +116,94 @@ func _unhandled_input(event):
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+	# Simple respawn logic
+	position = Vector3(0, 100, 0)
+	stats.heal(100)
+	stats.eat(100)
+
+# AI Control
+@export var ai_enabled: bool = false # Default to Manual
+var ai_target: Node3D = null
+var ai_timer: float = 0.0
+
 func _physics_process(delta):
 	# Add the gravity.
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
-	# Handle Jump.
-	if Input.is_action_just_pressed("jump") and is_on_floor():
-		velocity.y = JUMP_VELOCITY
-
-	# Get the input direction and handle the movement/deceleration.
-	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	
-	var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	if direction:
-		velocity.x = direction.x * SPEED
-		velocity.z = direction.z * SPEED
+	# AI Override
+	if ai_enabled:
+		process_ai(delta)
 	else:
-		velocity.x = move_toward(velocity.x, 0, SPEED)
-		velocity.z = move_toward(velocity.z, 0, SPEED)
+		# Manual Control
+		# Handle Jump.
+		if Input.is_action_just_pressed("jump") and is_on_floor():
+			velocity.y = JUMP_VELOCITY
+	
+		# Get the input direction and handle the movement/deceleration.
+		var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+		var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+		if direction:
+			velocity.x = direction.x * SPEED
+			velocity.z = direction.z * SPEED
+		else:
+			velocity.x = move_toward(velocity.x, 0, SPEED)
+			velocity.z = move_toward(velocity.z, 0, SPEED)
 
 	move_and_slide()
+	
+	if not ai_enabled:
+		# Manual Interaction
+		manual_interaction_check()
+
+func manual_interaction_check():
+	# Interaction
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		# ... (Existing Left Click Code)
+		pass # Logic matches previous impl
+
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		# ... (Existing Right Click Code)
+		pass
+
+func process_ai(delta):
+	ai_timer -= delta
+	
+	# Find Target
+	if not is_instance_valid(ai_target):
+		var mobs = get_tree().get_nodes_in_group("mobs") # Assuming mobs are in group
+		# Search mobs
+		var closest_dist = 999.0
+		for mob in get_tree().root.find_children("*", "Mob", true, false): # Quick hack if group missing
+			var d = global_position.distance_to(mob.global_position)
+			if d < closest_dist:
+				closest_dist = d
+				ai_target = mob
+	
+	if is_instance_valid(ai_target):
+		# Look at
+		head.look_at(ai_target.global_position, Vector3.UP, true) # Simplified look
+		
+		var dist = global_position.distance_to(ai_target.global_position)
+		if dist > 2.0:
+			# Move towards
+			var dir = (ai_target.global_position - global_position).normalized()
+			velocity.x = dir.x * SPEED
+			velocity.z = dir.z * SPEED
+		else:
+			# Attack
+			velocity.x = 0
+			velocity.z = 0
+			if ai_timer <= 0:
+				if ai_target.has_method("take_damage"):
+					print("AI Player attacking Mob!")
+					ai_target.take_damage(10.0) # Sword damage
+					ai_timer = 1.0
+	else:
+		# Wander
+		velocity.x = 0
+		velocity.z = 0
+
 
 	# Interaction
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -130,12 +213,38 @@ func _physics_process(delta):
 			# Or we can just find VoxelWorld globally if we are lazy, but let's	# Interaction
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		if raycast.is_colliding():
+			var collider = raycast.get_collider()
+			
+			# Check against Mobs
+			if collider is Mob:
+				# Attack Mob
+				# Get Weapon damage
+				var damage = 1.0 # Fist
+				if selected_block_id > 0:
+					var item = ItemDatabase.get_item(selected_block_id)
+					if item and item.damage_value > 0:
+						damage = item.damage_value
+				
+				# Call take_damage on Mob (RPC?)
+				if collider.has_method("take_damage"):
+					collider.take_damage(damage)
+					# Cooldown
+					await get_tree().create_timer(0.5).timeout
+				return
+			
 			var voxel_world = get_node("/root/World/VoxelWorld")
+			if voxel_world and collider == voxel_world: # Assuming VoxelWorld is the static body or check parent?
+				# Actually Chunk has StaticBody. Collider is StaticBody in Chunk.
+				# So we just proceed to block breaking if it's not a Mob.
+				pass
+				
 			if voxel_world:
 				var point = raycast.get_collision_point()
 				var normal = raycast.get_collision_normal()
 				var block_center = point - normal * 0.5
 				voxel_world.set_voxel.rpc(block_center, 0) # 0 = Air
+				# Add Cooldown for breaking?
+				await get_tree().create_timer(0.2).timeout
 
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		if raycast.is_colliding():
@@ -159,6 +268,22 @@ func _physics_process(delta):
 				# Place Block
 				var place_center = point + normal * 0.5
 				voxel_world.set_voxel.rpc(place_center, selected_block_id)
+				
+		# Handle Consumables (if no block interaction)
+		# Actually we should check hold item type first.
+		if selected_block_id > 0:
+			var item = ItemDatabase.get_item(selected_block_id)
+			if item and item.type == ItemData.ItemType.CONSUMABLE:
+				# Eat logic
+				if stats and stats.hunger < stats.max_hunger:
+					stats.eat(item.nutrition_value)
+					# Remove 1 from inventory
+					var inv = get_node_or_null("Inventory")
+					if inv:
+						inv.remove_item(selected_block_id, 1)
+					show_message("Ate " + item.name)
+					# Cooldown?
+					await get_tree().create_timer(0.5).timeout
 
 func show_message(text: String):
 	print("Message: " + text)
@@ -177,5 +302,18 @@ func show_message(text: String):
 		
 		# Clear after timer
 		await get_tree().create_timer(2.0).timeout
+		# Clear after timer
+		await get_tree().create_timer(2.0).timeout
 		if label and label.text == text:
 			label.text = ""
+
+func take_damage(amount: float):
+	if stats:
+		stats.take_damage(amount)
+
+func _on_death():
+	show_message("YOU DIED! Respawning...")
+	# Simple respawn logic
+	position = Vector3(0, 100, 0)
+	stats.heal(100)
+	stats.eat(100)

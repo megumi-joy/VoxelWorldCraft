@@ -39,7 +39,58 @@ replication_config = SubResource("SceneReplicationConfig_1")
 [node name="Inventory" type="Node" parent="."]
 script = ExtResource("2_inv")
 
+[node name="PlayerStats" type="Node" parent="."]
+script = ExtResource("res://Scripts/Player/PlayerStats.gd")
+
 [node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="HealthBar" type="ProgressBar" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 220.0
+offset_bottom = 50.0
+value = 100.0
+show_percentage = false
+
+[node name="Label" type="Label" parent="HUD/HealthBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -11.5
+offset_right = 20.0
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "Health"
+horizontal_alignment = 1
+
+[node name="HungerBar" type="ProgressBar" parent="HUD"]
+offset_left = 20.0
+offset_top = 60.0
+offset_right = 220.0
+offset_bottom = 90.0
+value = 100.0
+show_percentage = false
+
+[node name="Label" type="Label" parent="HUD/HungerBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -11.5
+offset_right = 20.0
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "Hunger"
+horizontal_alignment = 1
 
 [node name="InventoryUI" parent="HUD" instance=ExtResource("3_ui")]
 visible = false

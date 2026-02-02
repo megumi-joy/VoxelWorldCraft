@@ -1,7 +1,7 @@
 extends Resource
 class_name ItemData
 
-enum ItemType {BLOCK, TOOL, RESOURCE}
+enum ItemType {BLOCK, TOOL, RESOURCE, CONSUMABLE}
 
 @export var id: int
 @export var name: String
@@ -12,3 +12,7 @@ enum ItemType {BLOCK, TOOL, RESOURCE}
 
 # For blocks
 @export var block_id: int = 0
+
+# Stats
+@export var damage_value: float = 0.0
+@export var nutrition_value: float = 0.0
