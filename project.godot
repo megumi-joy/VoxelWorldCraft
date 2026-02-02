@@ -8,16 +8,18 @@
 
 config_version=5
 
-[autoload]
-
-NetworkManager="*res://Scripts/Autoload/NetworkManager.gd"
-
 [application]
 
 config/name="VoxelWorldCraft"
 run/main_scene="res://Scenes/World.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+NetworkManager="*res://Scripts/Autoload/NetworkManager.gd"
+ItemDatabase="*res://Scripts/Autoload/ItemDatabase.gd"
+SaveSystem="*res://Scripts/Autoload/SaveSystem.gd"
 
 [display]
 

@@ -15,6 +15,18 @@ func _ready():
 	generate_noise_texture(image, 2, 0, Color(0.5, 0.5, 0.5), Color(0.4, 0.4, 0.4))
 	# Generate Bedrock/Other
 	generate_noise_texture(image, 3, 0, Color(0.1, 0.1, 0.1), Color(0.0, 0.0, 0.0))
+	
+	# Generate Coal Ore (Atlas 1, 0 - wait, atlas mapping in Chunk.gd needs update too)
+	# Chunk.gd uses single row? No, 4x4 atlas.
+	# Let's put Coal at (0, 1) and Iron at (1, 1).
+	
+	# Coal Base (Stone) + Black spots
+	generate_noise_texture(image, 0, 1, Color(0.5, 0.5, 0.5), Color(0.4, 0.4, 0.4))
+	add_spots(image, 0, 1, Color(0.1, 0.1, 0.1))
+	
+	# Iron Base (Stone) + Orange spots
+	generate_noise_texture(image, 1, 1, Color(0.5, 0.5, 0.5), Color(0.4, 0.4, 0.4))
+	add_spots(image, 1, 1, Color(0.7, 0.5, 0.3))
 
 	var texture = ImageTexture.create_from_image(image)
 	# Save to disk mainly for debugging or if we want to use it in material
@@ -52,3 +64,14 @@ func generate_noise_texture(img: Image, cell_x: int, cell_y: int, color_a: Color
 				col = col.darkened(0.1)
 			
 			img.set_pixel(cell_x * CELL_SIZE + x, cell_y * CELL_SIZE + y, col)
+
+func add_spots(img: Image, cell_x: int, cell_y: int, spot_color: Color):
+	for i in range(20):
+		var rx = randi() % CELL_SIZE
+		var ry = randi() % CELL_SIZE
+		var radius = randi() % 5 + 2
+		
+		for x in range(rx - radius, rx + radius):
+			for y in range(ry - radius, ry + radius):
+				if x >= 0 and x < CELL_SIZE and y >= 0 and y < CELL_SIZE:
+					img.set_pixel(cell_x * CELL_SIZE + x, cell_y * CELL_SIZE + y, spot_color)

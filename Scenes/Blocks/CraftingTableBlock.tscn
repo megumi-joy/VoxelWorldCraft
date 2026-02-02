@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://crafting_table_block"]
+
+[ext_resource type="Script" path="res://Scripts/Blocks/CraftingTableBlock.gd" id="1_ct"]
+
+[node name="CraftingTableBlock" type="Node3D"]
+script = ExtResource("1_ct")

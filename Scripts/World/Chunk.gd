@@ -12,8 +12,6 @@ var mesh_instance: MeshInstance3D
 var collision_shape: CollisionShape3D
 
 var noise: FastNoiseLite
-
-var noise: FastNoiseLite
 var material: StandardMaterial3D
 
 func _init(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D):
@@ -36,6 +34,10 @@ func _ready():
 	generate_mesh()
 
 func generate_data():
+	# If data is already loaded (e.g. from SaveSystem), skip generation
+	if not voxel_data.is_empty():
+		return
+
 	# Simple terrain generation
 	for x in range(CHUNK_SIZE.x):
 		for z in range(CHUNK_SIZE.z):
@@ -52,6 +54,12 @@ func generate_data():
 					block_type = 3 # Stone
 				
 				voxel_data[Vector3i(x, y, z)] = block_type
+				
+	# Generate Structures
+	var struct_gen = StructureGenerator.new()
+	struct_gen.generate_structures(self, noise)
+	# Free generator mainly because it's stateless usage
+	struct_gen.free()
 
 func generate_mesh():
 	var surface_tool = SurfaceTool.new()
@@ -129,13 +137,22 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	# Block 3 (Stone) -> Atlas 2
 	
 	var atlas_idx = 0
-	if type == 1: atlas_idx = 1
-	elif type == 2: atlas_idx = 0
-	elif type == 3: atlas_idx = 2
+	var atlas_row = 0
+	
+	if type == 1: atlas_idx = 1 # Dirt
+	elif type == 2: atlas_idx = 0 # Grass
+	elif type == 3: atlas_idx = 2 # Stone
+	elif type == 4: atlas_idx = 3 # Wood (assume Bedrock/Wood slot)
+	elif type == 5:
+		atlas_idx = 0
+		atlas_row = 1 # Coal
+	elif type == 6:
+		atlas_idx = 1
+		atlas_row = 1 # Iron
 	
 	var uv_size = 1.0 / 4.0 # 4x4 atlas
 	var u_start = atlas_idx * uv_size
-	var v_start = 0.0 # Row 0
+	var v_start = atlas_row * uv_size
 	
 	# UVs for the face (Simple box mapping section)
 	# Vertices are: [0, 1, 2, 3] corresponding to quad corners

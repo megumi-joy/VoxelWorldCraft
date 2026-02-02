@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3 uid="uid://furnace_block"]
+
+[ext_resource type="Script" path="res://Scripts/Blocks/Furnace.gd" id="1_furnace"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_interact"]
+size = Vector3(1, 1, 1)
+
+[node name="FurnaceBlock" type="Node3D"]
+script = ExtResource("1_furnace")
+
+[node name="FireParticles" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 16
+lifetime = 0.5
+emission_shape = 1
+emission_sphere_radius = 0.2
+direction = Vector3(0, 1, 0)
+spread = 20.0
+gravity = Vector3(0, 1, 0)
+color = Color(1, 0.4, 0, 1)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+input_ray_pickable = false 
+# Note: Chunk mesh handles physics. 
+# We disable this or put it on a layer if we want separate interaction.
+# Current design: Player RayCast hits Chunk -> gets voxel pos -> VoxelWorld checks entity.
