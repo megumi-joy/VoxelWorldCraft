@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://bed_block"]
+
+[ext_resource type="Script" path="res://Scripts/Blocks/BedBlock.gd" id="1_bed"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bed"]
+size = Vector3(1, 0.5, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bed"]
+albedo_color = Color(0.8, 0.2, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_bed"]
+material = SubResource("StandardMaterial3D_bed")
+size = Vector3(1, 0.5, 2)
+
+[node name="BedBlock" type="Node3D"]
+script = ExtResource("1_bed")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_bed")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D"]
+mesh = SubResource("BoxMesh_bed")

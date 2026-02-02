@@ -51,3 +51,6 @@ visible = false
 
 [node name="FurnaceUI" parent="HUD" instance=ExtResource("res://Scenes/FurnaceUI.tscn")]
 visible = false
+
+[node name="TradingUI" parent="HUD" instance=ExtResource("res://Scenes/TradingUI.tscn")]
+visible = false

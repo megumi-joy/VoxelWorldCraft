@@ -51,6 +51,14 @@ func _ready():
 	iron.type = ItemData.ItemType.BLOCK
 	iron.block_id = 6
 	items[6] = iron
+	
+	# ID 10: Bed
+	var bed = ItemData.new()
+	bed.id = 10
+	bed.name = "Bed"
+	bed.type = ItemData.ItemType.BLOCK
+	bed.block_id = 10
+	items[10] = bed
 
 	# ID 8: Furnace
 	var furnace = ItemData.new()

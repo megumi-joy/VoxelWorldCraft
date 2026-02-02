@@ -159,3 +159,23 @@ func _physics_process(delta):
 				# Place Block
 				var place_center = point + normal * 0.5
 				voxel_world.set_voxel.rpc(place_center, selected_block_id)
+
+func show_message(text: String):
+	print("Message: " + text)
+	# Check HUD
+	var hud = get_node_or_null("HUD")
+	if hud:
+		var label = hud.get_node_or_null("MessageLabel")
+		if not label:
+			label = Label.new()
+			label.name = "MessageLabel"
+			label.position = Vector2(20, 20)
+			# label.add_theme_font_size_override("font_size", 24) # Optional
+			hud.add_child(label)
+		
+		label.text = text
+		
+		# Clear after timer
+		await get_tree().create_timer(2.0).timeout
+		if label and label.text == text:
+			label.text = ""

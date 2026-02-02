@@ -65,6 +65,8 @@ func set_voxel(global_pos: Vector3, type: int):
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/FurnaceBlock.tscn")
 	elif type == 9: # Crafting Table
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/CraftingTableBlock.tscn")
+	elif type == 10: # Bed
+		spawn_block_entity(pos_i, "res://Scenes/Blocks/BedBlock.tscn")
 	
 	if chunks.has(chunk_pos):
 		var chunk = chunks[chunk_pos]

@@ -52,6 +52,10 @@ func pick_new_state():
 		move_direction = Vector3(sin(angle), 0, cos(angle))
 
 func interact(player):
-	# Placeholder dialogue
-	print("Villager says: Hmmm.")
-	# TODO: Open trading UI
+	print("Villager says: Trade?")
+	
+	# Look for TradingUI in Player HUD
+	var hud = player.get_node_or_null("HUD")
+	if hud and hud.has_node("TradingUI"):
+		var ui = hud.get_node("TradingUI")
+		ui.open()
