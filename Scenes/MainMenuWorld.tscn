@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://menu_world_3d"]
+[gd_scene load_steps=7 format=3 uid="uid://de7lqtlx3bovo"]
 
 [ext_resource type="Script" path="res://Scripts/UI/MainMenuWorld.gd" id="1_mmw"]
 [ext_resource type="Script" path="res://Scripts/World/VoxelWorld.gd" id="2_vw"]
@@ -26,7 +26,8 @@ shadow_enabled = true
 
 [node name="VoxelWorld" type="Node3D" parent="."]
 script = ExtResource("2_vw")
-render_distance = 6
+render_distance = 1
+spawn_on_start = false
 
 [node name="TimeCycle" type="Node" parent="." node_paths=PackedStringArray("sun", "environment")]
 script = ExtResource("3_time")

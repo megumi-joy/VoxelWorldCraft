@@ -26,6 +26,7 @@ shadow_enabled = true
 
 [node name="VoxelWorld" type="Node3D" parent="."]
 script = ExtResource("1_world")
+render_distance = 4
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("res://Scenes/Player.tscn")

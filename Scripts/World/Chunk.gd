@@ -174,18 +174,18 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	# Let's just create a generic unwrapped UV set for a face
 	
 	st.set_uv(face_uvs[0])
-	st.add_vertex(pos + vertices[0])
+	st.add_vertex(Vector3(pos) + vertices[0])
 	st.set_uv(face_uvs[1])
-	st.add_vertex(pos + vertices[1])
+	st.add_vertex(Vector3(pos) + vertices[1])
 	st.set_uv(face_uvs[2])
-	st.add_vertex(pos + vertices[2])
+	st.add_vertex(Vector3(pos) + vertices[2])
 	
 	st.set_uv(face_uvs[0])
-	st.add_vertex(pos + vertices[0])
+	st.add_vertex(Vector3(pos) + vertices[0])
 	st.set_uv(face_uvs[2])
-	st.add_vertex(pos + vertices[2])
+	st.add_vertex(Vector3(pos) + vertices[2])
 	st.set_uv(face_uvs[3])
-	st.add_vertex(pos + vertices[3])
+	st.add_vertex(Vector3(pos) + vertices[3])
 
 func set_block(local_pos: Vector3i, type: int):
 	# If type is 0 (Air), remove from dictionary

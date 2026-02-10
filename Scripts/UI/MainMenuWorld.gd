@@ -5,7 +5,7 @@ extends Node3D
 @export var height: float = 80.0
 
 @onready var camera = $Camera3D
-@onready var pivot = $Pivot
+
 
 var angle: float = 0.0
 
@@ -14,7 +14,8 @@ func _ready():
 	if has_node("VoxelWorld"):
 		var vw = $VoxelWorld
 		# Force load center chunks
-		vw.update_chunks(Vector2i(0, 0))
+		if vw.has_method("update_chunks"):
+			vw.call_deferred("update_chunks", Vector2i(0, 0))
 
 func _process(delta):
 	angle += rotation_speed * delta

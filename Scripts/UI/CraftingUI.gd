@@ -31,6 +31,9 @@ func update_ui():
 		# Button per recipe
 		var btn = Button.new()
 		# Simple text: Output Name xCount
+		# Check if recipe has output
+		if not recipe.has("output") or not recipe.output.has("id"): continue
+		
 		var output_id = recipe.output.id
 		var db = get_node("/root/ItemDatabase")
 		var name = "Unknown"

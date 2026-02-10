@@ -11,9 +11,17 @@ func host_game():
 		printerr("Cannot host: " + str(error))
 		return
 	
+	printerr("NetworkManager: Server Created Successfully.")
 	multiplayer.multiplayer_peer = peer
-	print("Hosting on port " + str(PORT))
+	printerr("Hosting on port " + str(PORT))
 	load_world()
+	
+func load_world():
+	printerr("NetworkManager: Changing scene to World.tscn...")
+	var result = get_tree().change_scene_to_file("res://Scenes/World.tscn")
+	printerr("Change Scene Result: ", result)
+	if result != OK:
+		printerr("CRITICAL ERROR: Failed to change scene! Code: ", result)
 
 func join_game(address):
 	if address == "":
@@ -32,5 +40,6 @@ func join_game(address):
 	# But in Godot 4, if we just switch scene locally, we need to ensure nodes match.
 	pass
 
-func load_world():
-	get_tree().change_scene_to_file("res://Scenes/World.tscn")
+# func load_world():
+	# Server authority says go
+	# get_tree().change_scene_to_file("res://Scenes/World.tscn")

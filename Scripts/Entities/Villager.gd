@@ -2,6 +2,7 @@ extends CharacterBody3D
 class_name Villager
 
 const SPEED = 2.0
+const JUMP_VELOCITY = 4.5
 const GRAVITY = 9.8
 
 # States
@@ -12,7 +13,20 @@ var move_timer = 0.0
 var move_direction = Vector3.ZERO
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
 
+var wall_ray: RayCast3D
+
 @onready var anim = $AnimationPlayer # Placeholder if we had one
+
+func _ready():
+	setup_raycast()
+
+func setup_raycast():
+	wall_ray = RayCast3D.new()
+	wall_ray.name = "WallRay"
+	wall_ray.target_position = Vector3(0, 0, -1.0) # Look forward
+	wall_ray.enabled = true
+	wall_ray.position.y = 0.5
+	add_child(wall_ray)
 
 func _physics_process(delta):
 	# Gravity
@@ -33,6 +47,11 @@ func _physics_process(delta):
 			if move_direction != Vector3.ZERO:
 				velocity.x = move_direction.x * SPEED
 				velocity.z = move_direction.z * SPEED
+				
+				# Obstacle Avoidance
+				if is_on_floor() and wall_ray.is_colliding():
+					velocity.y = JUMP_VELOCITY
+					
 				look_at(global_position + move_direction, Vector3.UP)
 			
 			move_timer -= delta
