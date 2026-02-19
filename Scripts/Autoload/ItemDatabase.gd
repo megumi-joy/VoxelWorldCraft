@@ -3,6 +3,7 @@ extends Node
 var items = {}
 
 func _ready():
+	var ItemData = load("res://Scripts/Entities/ItemData.gd")
 	# Hardcoded items for prototype
 	# ID 1: Dirt Block
 	var dirt = ItemData.new()
@@ -92,7 +93,7 @@ func _ready():
 	sword.damage_value = 10.0
 	items[12] = sword
 
-func get_item(id: int) -> ItemData:
+func get_item(id: int):
 	if items.has(id):
 		return items[id]
 	return null

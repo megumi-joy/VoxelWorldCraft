@@ -14,12 +14,14 @@ var collision_shape: CollisionShape3D
 var noise: FastNoiseLite
 var material: StandardMaterial3D
 
-func _init(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D):
+func setup(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D):
 	chunk_position = pos
 	noise = _noise
 	material = _material
 	
 func _ready():
+	# print("Chunk Created: ", chunk_position)
+	pass
 	mesh_instance = MeshInstance3D.new()
 	mesh_instance.material_override = material
 	add_child(mesh_instance)
@@ -33,9 +35,13 @@ func _ready():
 	generate_data()
 	generate_mesh()
 
+var is_generating: bool = false
+
 func generate_data():
+	is_generating = true
 	# If data is already loaded (e.g. from SaveSystem), skip generation
 	if not voxel_data.is_empty():
+		is_generating = false
 		return
 
 	# Simple terrain generation
@@ -56,10 +62,13 @@ func generate_data():
 				voxel_data[Vector3i(x, y, z)] = block_type
 				
 	# Generate Structures
+	var StructureGenerator = load("res://Scripts/World/StructureGenerator.gd")
 	var struct_gen = StructureGenerator.new()
 	struct_gen.generate_structures(self, noise)
 	# Free generator mainly because it's stateless usage
 	struct_gen.free()
+	
+	is_generating = false
 
 func generate_mesh():
 	var surface_tool = SurfaceTool.new()
@@ -105,6 +114,7 @@ func create_block_faces(st: SurfaceTool, pos: Vector3i):
 func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	var vertices = []
 	var uv_offset = Vector2(0, 0) # Placeholder for atlas logic
+	var pos_f = Vector3(pos.x, pos.y, pos.z)
 	
 	# Defined with Counter-Clockwise winding for Godot
 	if normal == Vector3.UP:
@@ -174,25 +184,27 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	# Let's just create a generic unwrapped UV set for a face
 	
 	st.set_uv(face_uvs[0])
-	st.add_vertex(pos + vertices[0])
+	st.add_vertex(pos_f + vertices[0])
 	st.set_uv(face_uvs[1])
-	st.add_vertex(pos + vertices[1])
+	st.add_vertex(pos_f + vertices[1])
 	st.set_uv(face_uvs[2])
-	st.add_vertex(pos + vertices[2])
+	st.add_vertex(pos_f + vertices[2])
 	
 	st.set_uv(face_uvs[0])
-	st.add_vertex(pos + vertices[0])
+	st.add_vertex(pos_f + vertices[0])
 	st.set_uv(face_uvs[2])
-	st.add_vertex(pos + vertices[2])
+	st.add_vertex(pos_f + vertices[2])
 	st.set_uv(face_uvs[3])
-	st.add_vertex(pos + vertices[3])
+	st.add_vertex(pos_f + vertices[3])
 
 func set_block(local_pos: Vector3i, type: int):
 	# If type is 0 (Air), remove from dictionary
 	if type == 0:
 		if voxel_data.has(local_pos):
 			voxel_data.erase(local_pos)
-			generate_mesh()
+			if not is_generating:
+				generate_mesh()
 	else:
 		voxel_data[local_pos] = type
-		generate_mesh()
+		if not is_generating:
+			generate_mesh()

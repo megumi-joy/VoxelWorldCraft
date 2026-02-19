@@ -2,8 +2,8 @@ extends Node
 
 @export var player_path: NodePath
 @export var mob_scene: PackedScene
-@export var time_cycle: TimeCycle
-@export var voxel_world: VoxelWorld
+@export var time_cycle: Node # Removed TimeCycle Type Hint
+@export var voxel_world: Node # Removed VoxelWorld Type Hint
 
 @export var max_mobs: int = 20
 @export var spawn_interval: float = 2.0
@@ -100,7 +100,8 @@ func check_despawn():
 	if not player: return
 	
 	for child in get_children():
-		if child is Mob:
+		# Using duck typing or name check to avoid Class cyclic dependency
+		if child.has_method("take_damage"): # Assuming Mobs have health
 			if child.global_position.distance_to(player.global_position) > despawn_range:
 				child.queue_free()
 

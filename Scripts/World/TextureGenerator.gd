@@ -46,7 +46,8 @@ func _ready():
 	
 	# Let's emit or store it in a singleton or VoxelWorld.
 	var world = get_parent()
-	if world is VoxelWorld:
+	# Avoid static type check to prevent circular dependency
+	if world.has_method("update_chunks"):
 		world.chunk_material = mat
 
 func generate_noise_texture(img: Image, cell_x: int, cell_y: int, color_a: Color, color_b: Color):

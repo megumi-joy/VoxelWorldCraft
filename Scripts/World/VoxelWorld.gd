@@ -3,14 +3,17 @@ class_name VoxelWorld
 
 var chunks = {}
 var noise = FastNoiseLite.new()
+const ChunkScript = preload("res://Scripts/World/Chunk.gd")
 
-@export var render_distance = 4
+@export var render_distance = 2
 @export var player: Node3D
 
 var chunk_material: StandardMaterial3D
 
 func _ready():
-	var tex_gen = TextureGenerator.new()
+	var TextureGenerator = load("res://Scripts/World/TextureGenerator.gd")
+	var tex_gen = Node.new()
+	tex_gen.set_script(TextureGenerator)
 	add_child(tex_gen)
 	
 	noise.seed = randi()
@@ -18,8 +21,9 @@ func _ready():
 
 func _process(_delta):
 	if player:
+		# Hardcoded Chunk Size (16, 256, 16) to avoid script loading issues
 		var p_pos = player.global_position
-		var chunk_pos = Vector2i(int(p_pos.x / Chunk.CHUNK_SIZE.x), int(p_pos.z / Chunk.CHUNK_SIZE.z))
+		var chunk_pos = Vector2i(int(p_pos.x / 16.0), int(p_pos.z / 16.0))
 		
 		update_chunks(chunk_pos)
 
@@ -31,14 +35,22 @@ func update_chunks(center_chunk: Vector2i):
 				create_chunk(pos)
 
 func create_chunk(pos: Vector2i):
-	var chunk = Chunk.new(pos, noise, chunk_material)
+	var chunk = Node3D.new()
+	chunk.set_script(ChunkScript)
+	if chunk.get_script() == null:
+		print("ERROR: Failed to attach ChunkScript! ChunkScript resource: ", ChunkScript)
+	else:
+		if chunk.has_method("setup"):
+			chunk.setup(pos, noise, chunk_material)
+		else:
+			print("ERROR: Chunk script attached but no setup method!")
 	
 	# Load existing data BEFORE add_child so _ready sees it
 	if SaveSystem.has_chunk(pos):
 		SaveSystem.load_chunk(chunk)
 	
 	add_child(chunk)
-	chunk.global_position = Vector3(pos.x * Chunk.CHUNK_SIZE.x, 0, pos.y * Chunk.CHUNK_SIZE.z)
+	chunk.global_position = Vector3(pos.x * 16.0, 0, pos.y * 16.0)
 	chunks[pos] = chunk
 
 var block_entities = {} # Vector3i -> Node
@@ -50,8 +62,8 @@ func set_voxel(global_pos: Vector3, type: int):
 	var z = int(floor(global_pos.z))
 	var pos_i = Vector3i(x, y, z)
 	
-	var chunk_x = int(floor(float(x) / Chunk.CHUNK_SIZE.x))
-	var chunk_z = int(floor(float(z) / Chunk.CHUNK_SIZE.z))
+	var chunk_x = int(floor(float(x) / 16.0))
+	var chunk_z = int(floor(float(z) / 16.0))
 	var chunk_pos = Vector2i(chunk_x, chunk_z)
 	
 	# Handle Block Entities
@@ -70,11 +82,11 @@ func set_voxel(global_pos: Vector3, type: int):
 	
 	if chunks.has(chunk_pos):
 		var chunk = chunks[chunk_pos]
-		var local_x = x - chunk_x * Chunk.CHUNK_SIZE.x
-		var local_z = z - chunk_z * Chunk.CHUNK_SIZE.z
+		var local_x = x - chunk_x * 16
+		var local_z = z - chunk_z * 16
 		
 		# Validate Y (0-255)
-		if y >= 0 and y < Chunk.CHUNK_SIZE.y:
+		if y >= 0 and y < 256:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
 			SaveSystem.save_chunk(chunk)
 
