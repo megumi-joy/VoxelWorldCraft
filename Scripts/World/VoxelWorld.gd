@@ -45,13 +45,21 @@ func create_chunk(pos: Vector2i):
 		else:
 			print("ERROR: Chunk script attached but no setup method!")
 	
-	# Load existing data BEFORE add_child so _ready sees it
-	if SaveSystem.has_chunk(pos):
-		SaveSystem.load_chunk(chunk)
-	
-	add_child(chunk)
-	chunk.global_position = Vector3(pos.x * 16.0, 0, pos.y * 16.0)
-	chunks[pos] = chunk
+	# Add AutoTester if in headless/profile mode
+	if OS.get_cmdline_args().has("--profile") or OS.has_feature("testing"):
+		var tester_script = load("res://Scripts/Testing/AutoTester.gd")
+		var tester = Node.new()
+		tester.name = "AutoTester"
+		tester.set_script(tester_script)
+		
+		# Find player and add to it
+		var p = get_node_or_null("Player")
+		if p:
+			p.add_child(tester)
+			print("AutoTester attached to Player")
+		else:
+			add_child(tester)
+			print("AutoTester added to World (Player not found)")
 
 var block_entities = {} # Vector3i -> Node
 

@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://Scripts/Player/Player.gd" id="1_player"]
 [ext_resource type="Script" path="res://Scripts/UI/Inventory.gd" id="2_inv"]
 [ext_resource type="PackedScene" uid="uid://inventory_ui" path="res://Scenes/InventoryUI.tscn" id="3_ui"]
+[ext_resource type="Script" path="res://Scripts/Player/PlayerStats.gd" id="4_stats"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.5
@@ -40,7 +41,7 @@ replication_config = SubResource("SceneReplicationConfig_1")
 script = ExtResource("2_inv")
 
 [node name="PlayerStats" type="Node" parent="."]
-script = ExtResource("res://Scripts/Player/PlayerStats.gd")
+script = ExtResource("4_stats")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
@@ -95,13 +96,13 @@ horizontal_alignment = 1
 [node name="InventoryUI" parent="HUD" instance=ExtResource("3_ui")]
 visible = false
 
-[node name="HotbarUI" parent="HUD" instance=ExtResource("res://Scenes/HotbarUI.tscn")]
+[node name="HotbarUI" parent="HUD" instance=ExtResource("5_hotbar")]
 
-[node name="CraftingUI" parent="HUD" instance=ExtResource("res://Scenes/CraftingUI.tscn")]
+[node name="CraftingUI" parent="HUD" instance=ExtResource("6_crafting")]
 visible = false
 
-[node name="FurnaceUI" parent="HUD" instance=ExtResource("res://Scenes/FurnaceUI.tscn")]
+[node name="FurnaceUI" parent="HUD" instance=ExtResource("7_furnace")]
 visible = false
 
-[node name="TradingUI" parent="HUD" instance=ExtResource("res://Scenes/TradingUI.tscn")]
+[node name="TradingUI" parent="HUD" instance=ExtResource("8_trading")]
 visible = false

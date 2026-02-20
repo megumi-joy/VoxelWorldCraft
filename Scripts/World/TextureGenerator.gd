@@ -27,6 +27,23 @@ func _ready():
 	# Iron Base (Stone) + Orange spots
 	generate_noise_texture(image, 1, 1, Color(0.5, 0.5, 0.5), Color(0.4, 0.4, 0.4))
 	add_spots(image, 1, 1, Color(0.7, 0.5, 0.3))
+	
+	# Planks (2, 1) - Wood color with lines
+	generate_noise_texture(image, 2, 1, Color(0.6, 0.45, 0.3), Color(0.5, 0.35, 0.2))
+	add_lines(image, 2, 1, Color(0.3, 0.2, 0.1))
+	
+	# Farmland (3, 1) - Dark Dirt
+	generate_noise_texture(image, 3, 1, Color(0.2, 0.15, 0.1), Color(0.1, 0.05, 0.0))
+	
+	# Snow (0, 2) - White
+	generate_noise_texture(image, 0, 2, Color(0.95, 0.95, 1.0), Color(0.9, 0.9, 0.95))
+	
+	# Sand (1, 2) - Yellowish
+	generate_noise_texture(image, 1, 2, Color(0.8, 0.7, 0.5), Color(0.75, 0.65, 0.45))
+	
+	# Seedling (2, 2) - Light Green sprouts
+	generate_noise_texture(image, 2, 2, Color(0.1, 0.05, 0.0), Color(0.1, 0.05, 0.0)) # Dark background
+	add_spots(image, 2, 2, Color(0.2, 0.9, 0.2)) # Green spots
 
 	var texture = ImageTexture.create_from_image(image)
 	# Save to disk mainly for debugging or if we want to use it in material
@@ -76,3 +93,8 @@ func add_spots(img: Image, cell_x: int, cell_y: int, spot_color: Color):
 			for y in range(ry - radius, ry + radius):
 				if x >= 0 and x < CELL_SIZE and y >= 0 and y < CELL_SIZE:
 					img.set_pixel(cell_x * CELL_SIZE + x, cell_y * CELL_SIZE + y, spot_color)
+
+func add_lines(img: Image, cell_x: int, cell_y: int, line_color: Color):
+	for y_off in [32, 64, 96]:
+		for x in range(CELL_SIZE):
+			img.set_pixel(cell_x * CELL_SIZE + x, cell_y * CELL_SIZE + y_off, line_color)

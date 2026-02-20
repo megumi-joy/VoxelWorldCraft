@@ -92,6 +92,50 @@ func _ready():
 	sword.type = ItemData.ItemType.TOOL
 	sword.damage_value = 10.0
 	items[12] = sword
+	
+	# ID 13: Planks
+	var planks = ItemData.new()
+	planks.id = 13
+	planks.name = "Planks"
+	planks.type = ItemData.ItemType.BLOCK
+	planks.block_id = 13
+	items[13] = planks
+	
+	# ID 20: Seeds
+	var seeds = ItemData.new()
+	seeds.id = 20
+	seeds.name = "Seeds"
+	seeds.type = ItemData.ItemType.RESOURCE
+	items[20] = seeds
+	
+	# ID 21: Wheat
+	var wheat = ItemData.new()
+	wheat.id = 21
+	wheat.name = "Wheat"
+	wheat.type = ItemData.ItemType.RESOURCE
+	items[21] = wheat
+	
+	# ID 22: Bread
+	var bread = ItemData.new()
+	bread.id = 22
+	bread.name = "Bread"
+	bread.type = ItemData.ItemType.CONSUMABLE
+	bread.nutrition_value = 30.0
+	items[22] = bread
+	
+	# ID 30-33: Wooden Tools
+	var tools_data = {
+		30: ["Wooden Pickaxe", 2.0],
+		31: ["Wooden Shovel", 2.0],
+		32: ["Wooden Axe", 2.0],
+		33: ["Wooden Hoe", 1.0]
+	}
+	for tid in tools_data:
+		var t = ItemData.new()
+		t.id = tid
+		t.name = tools_data[tid][0]
+		t.type = ItemData.ItemType.TOOL
+		items[tid] = t
 
 func get_item(id: int):
 	if items.has(id):

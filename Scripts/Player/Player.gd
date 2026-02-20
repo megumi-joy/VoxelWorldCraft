@@ -94,7 +94,7 @@ func setup_nodes():
 	col.shape = shape
 	add_child(col)
 
-	var inv = Inventory.new()
+	var inv = load("res://Scripts/UI/Inventory.gd").new()
 	inv.name = "Inventory"
 	add_child(inv)
 	
@@ -135,36 +135,104 @@ func _physics_process(delta):
 	if ai_enabled:
 		process_ai(delta)
 	else:
-		# Manual Control
-		# Handle Jump.
-		if Input.is_action_just_pressed("jump") and is_on_floor():
-			velocity.y = JUMP_VELOCITY
-	
-		# Get the input direction and handle the movement/deceleration.
-		var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-		var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-		if direction:
-			velocity.x = direction.x * SPEED
-			velocity.z = direction.z * SPEED
-		else:
-			velocity.x = move_toward(velocity.x, 0, SPEED)
-			velocity.z = move_toward(velocity.z, 0, SPEED)
+		handle_movement(delta)
 
 	move_and_slide()
 	
-	if not ai_enabled:
-		# Manual Interaction
+	if not ai_enabled and not has_node("AutoTester"):
 		manual_interaction_check()
 
-func manual_interaction_check():
-	# Interaction
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		# ... (Existing Left Click Code)
-		pass # Logic matches previous impl
+func handle_movement(delta):
+	if Input.is_action_just_pressed("jump") and is_on_floor():
+		velocity.y = JUMP_VELOCITY
+	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+	var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	if direction:
+		velocity.x = direction.x * SPEED
+		velocity.z = direction.z * SPEED
+	else:
+		velocity.x = move_toward(velocity.x, 0, SPEED)
+		velocity.z = move_toward(velocity.z, 0, SPEED)
 
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-		# ... (Existing Right Click Code)
-		pass
+# Interaction override for Bot
+var mock_left_click: bool = false
+var mock_right_click: bool = false
+
+func manual_interaction_check():
+	var left = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or mock_left_click
+	var right = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or mock_right_click
+	
+	if not left and not right: return
+	
+	if raycast.is_colliding():
+		var collider = raycast.get_collider()
+		var point = raycast.get_collision_point()
+		var normal = raycast.get_collision_normal()
+		var voxel_world = get_node_or_null("/root/World/VoxelWorld")
+		
+		# Left Click: Destroy
+		if left:
+			if collider is StaticBody3D and voxel_world:
+				var block_pos = point - normal * 0.1
+				voxel_world.set_voxel.rpc(block_pos, 0)
+				await get_tree().create_timer(0.2).timeout
+			elif collider.has_method("take_damage"):
+				collider.take_damage(10.0)
+				await get_tree().create_timer(0.4).timeout
+
+		# Right Click: Place / Interact / Farm
+		elif right:
+			if not voxel_world: return
+			
+			var target_pos = point - normal * 0.1
+			var x = int(floor(target_pos.x))
+			var y = int(floor(target_pos.y))
+			var z = int(floor(target_pos.z))
+			var block_type = get_block_at(voxel_world, target_pos)
+			
+			# Handle Consumables (if no block interaction)
+			if selected_block_id > 0:
+				var item = ItemDatabase.get_item(selected_block_id)
+				if item and item.type == 3: # ItemType.CONSUMABLE
+					# Consume item logic here
+					# For now, just print and return
+					print("Consumed item: ", item.name)
+					# stats.consume_item(item) # Example
+					await get_tree().create_timer(0.3).timeout
+					return
+
+			# Tool Logic
+			var item = ItemDatabase.get_item(selected_block_id)
+			if item:
+				# 1. Hoe Logic
+				if selected_block_id == 33: # Hoe
+					if block_type == 1 or block_type == 2: # Dirt/Grass
+						voxel_world.set_voxel.rpc(target_pos, 14) # Farmland
+						show_message("Tilled Soil")
+						await get_tree().create_timer(0.3).timeout
+						return
+
+				# 2. Seed Logic (Planting)
+				if selected_block_id == 20: # Seeds
+					if block_type == 14: # Farmland
+						var plant_pos = target_pos + Vector3(0, 1, 0)
+						if get_block_at(voxel_world, plant_pos) == 0:
+							voxel_world.set_voxel.rpc(plant_pos, 17) # Seedling
+							show_message("Planted Seeds")
+							await get_tree().create_timer(0.3).timeout
+							return
+
+			# 3. Block Entity Interaction
+			var entity = voxel_world.get_block_entity(Vector3i(x, y, z))
+			if entity and entity.has_method("interact"):
+				entity.interact(self)
+				return
+				
+			# 4. Normal Block Placement
+			if item and item.type == 0: # ItemType.BLOCK
+				var place_pos = point + normal * 0.1
+				voxel_world.set_voxel.rpc(place_pos, selected_block_id)
+				await get_tree().create_timer(0.2).timeout
 
 func process_ai(delta):
 	ai_timer -= delta
@@ -204,86 +272,21 @@ func process_ai(delta):
 		velocity.x = 0
 		velocity.z = 0
 
-
-	# Interaction
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		if raycast.is_colliding():
-			var collider = raycast.get_collider()
-			# Collider is StaticBody3D -> MeshInstance3D -> Chunk -> VoxelWorld
-			# Or we can just find VoxelWorld globally if we are lazy, but let's	# Interaction
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		if raycast.is_colliding():
-			var collider = raycast.get_collider()
-			
-			# Check against Mobs
-			if collider is Mob:
-				# Attack Mob
-				# Get Weapon damage
-				var damage = 1.0 # Fist
-				if selected_block_id > 0:
-					var item = ItemDatabase.get_item(selected_block_id)
-					if item and item.damage_value > 0:
-						damage = item.damage_value
-				
-				# Call take_damage on Mob (RPC?)
-				if collider.has_method("take_damage"):
-					collider.take_damage(damage)
-					# Cooldown
-					await get_tree().create_timer(0.5).timeout
-				return
-			
-			var voxel_world = get_node("/root/World/VoxelWorld")
-			if voxel_world and collider == voxel_world: # Assuming VoxelWorld is the static body or check parent?
-				# Actually Chunk has StaticBody. Collider is StaticBody in Chunk.
-				# So we just proceed to block breaking if it's not a Mob.
-				pass
-				
-			if voxel_world:
-				var point = raycast.get_collision_point()
-				var normal = raycast.get_collision_normal()
-				var block_center = point - normal * 0.5
-				voxel_world.set_voxel.rpc(block_center, 0) # 0 = Air
-				# Add Cooldown for breaking?
-				await get_tree().create_timer(0.2).timeout
-
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-		if raycast.is_colliding():
-			var voxel_world = get_node("/root/World/VoxelWorld")
-			if voxel_world:
-				var point = raycast.get_collision_point()
-				var normal = raycast.get_collision_normal()
-				
-				# Check interaction first (Existing block)
-				var block_center = point - normal * 0.5
-				var x = int(floor(block_center.x))
-				var y = int(floor(block_center.y))
-				var z = int(floor(block_center.z))
-				var pos_i = Vector3i(x, y, z)
-				
-				var entity = voxel_world.get_block_entity(pos_i)
-				if entity and entity.has_method("interact"):
-					entity.interact(self)
-					return # Don't place block if interacted
-				
-				# Place Block
-				var place_center = point + normal * 0.5
-				voxel_world.set_voxel.rpc(place_center, selected_block_id)
-				
-		# Handle Consumables (if no block interaction)
-		# Actually we should check hold item type first.
-		if selected_block_id > 0:
-			var item = ItemDatabase.get_item(selected_block_id)
-			if item and item.type == ItemData.ItemType.CONSUMABLE:
-				# Eat logic
-				if stats and stats.hunger < stats.max_hunger:
-					stats.eat(item.nutrition_value)
-					# Remove 1 from inventory
-					var inv = get_node_or_null("Inventory")
-					if inv:
-						inv.remove_item(selected_block_id, 1)
-					show_message("Ate " + item.name)
-					# Cooldown?
-					await get_tree().create_timer(0.5).timeout
+func get_block_at(world, pos: Vector3) -> int:
+	var x = int(floor(pos.x))
+	var y = int(floor(pos.y))
+	var z = int(floor(pos.z))
+	var cx = int(floor(float(x) / 16.0))
+	var cz = int(floor(float(z) / 16.0))
+	var cp = Vector2i(cx, cz)
+	if world.chunks.has(cp):
+		var chunk = world.chunks[cp]
+		var lx = x - cx * 16
+		var lz = z - cz * 16
+		var lp = Vector3i(lx, y, lz)
+		if chunk.voxel_data.has(lp):
+			return chunk.voxel_data[lp]
+	return 0
 
 func show_message(text: String):
 	print("Message: " + text)

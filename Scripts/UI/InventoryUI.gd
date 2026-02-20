@@ -1,7 +1,7 @@
 extends Control
 
 @onready var grid = $Panel/GridContainer
-var inventory: Inventory
+var inventory
 
 func _ready():
 	# Find player inventory

@@ -13,15 +13,16 @@ var collision_shape: CollisionShape3D
 
 var noise: FastNoiseLite
 var material: StandardMaterial3D
+var world_node: Node3D # Parent VoxelWorld
 
 func setup(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D):
 	chunk_position = pos
 	noise = _noise
 	material = _material
+	world_node = get_parent()
 	
 func _ready():
 	# print("Chunk Created: ", chunk_position)
-	pass
 	mesh_instance = MeshInstance3D.new()
 	mesh_instance.material_override = material
 	add_child(mesh_instance)
@@ -93,23 +94,52 @@ func generate_mesh():
 func create_block_faces(st: SurfaceTool, pos: Vector3i):
 	# Check neighbors to cull faces
 	# Top
-	if not voxel_data.has(pos + Vector3i.UP):
+	if not has_voxel(pos + Vector3i.UP):
 		create_face(st, pos, Vector3.UP)
 	# Bottom
-	if not voxel_data.has(pos + Vector3i.DOWN):
+	if not has_voxel(pos + Vector3i.DOWN):
 		create_face(st, pos, Vector3.DOWN)
 	# Left
-	if not voxel_data.has(pos + Vector3i.LEFT):
+	if not has_voxel(pos + Vector3i.LEFT):
 		create_face(st, pos, Vector3.LEFT)
 	# Right
-	if not voxel_data.has(pos + Vector3i.RIGHT):
+	if not has_voxel(pos + Vector3i.RIGHT):
 		create_face(st, pos, Vector3.RIGHT)
 	# Forward
-	if not voxel_data.has(pos + Vector3i.FORWARD):
+	if not has_voxel(pos + Vector3i.FORWARD):
 		create_face(st, pos, Vector3.FORWARD)
 	# Back
-	if not voxel_data.has(pos + Vector3i.BACK):
+	if not has_voxel(pos + Vector3i.BACK):
 		create_face(st, pos, Vector3.BACK)
+
+func has_voxel(pos: Vector3i) -> bool:
+	# Local check
+	if pos.x >= 0 and pos.x < 16 and pos.y >= 0 and pos.y < 256 and pos.z >= 0 and pos.z < 16:
+		return voxel_data.has(pos)
+	
+	# Inter-chunk check
+	if not world_node:
+		world_node = get_parent()
+		if not world_node: return false
+	
+	var global_x = int(chunk_position.x * 16 + pos.x)
+	var global_z = int(chunk_position.y * 16 + pos.z)
+	var global_y = pos.y
+	
+	if global_y < 0 or global_y >= 256:
+		return false
+		
+	var n_chunk_x = int(floor(float(global_x) / 16.0))
+	var n_chunk_z = int(floor(float(global_z) / 16.0))
+	var n_chunk_pos = Vector2i(n_chunk_x, n_chunk_z)
+	
+	if world_node.get("chunks") and world_node.chunks.has(n_chunk_pos):
+		var n_chunk = world_node.chunks[n_chunk_pos]
+		var local_x = global_x - n_chunk_x * 16
+		var local_z = global_z - n_chunk_z * 16
+		return n_chunk.voxel_data.has(Vector3i(local_x, global_y, local_z))
+	
+	return false
 
 func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	var vertices = []
@@ -133,18 +163,9 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	st.set_normal(normal)
 	
 	# Determine block type for UVs
-	# We need the type at 'pos'. 
 	var type = 1 # Default
 	if voxel_data.has(pos):
 		type = voxel_data[pos]
-	
-	# Mapping: 1=Grass(0,0), 2=Dirt(1,0), 3=Stone(2,0)
-	# Actually TextureGenerator makes: 0=Grass, 1=Dirt, 2=Stone
-	# My block types were: 1=Dirt, 2=Grass, 3=Stone.
-	# Let's map: 
-	# Block 1 (Dirt) -> Atlas 1
-	# Block 2 (Grass) -> Atlas 0
-	# Block 3 (Stone) -> Atlas 2
 	
 	var atlas_idx = 0
 	var atlas_row = 0
@@ -159,29 +180,32 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 6:
 		atlas_idx = 1
 		atlas_row = 1 # Iron
+	elif type == 13:
+		atlas_idx = 2
+		atlas_row = 1 # Planks
+	elif type == 14:
+		atlas_idx = 3
+		atlas_row = 1 # Farmland
+	elif type == 15:
+		atlas_idx = 0
+		atlas_row = 2 # Snow
+	elif type == 16:
+		atlas_idx = 1
+		atlas_row = 2 # Sand
+	elif type == 17:
+		atlas_idx = 2
+		atlas_row = 2 # Seedling
 	
 	var uv_size = 1.0 / 4.0 # 4x4 atlas
 	var u_start = atlas_idx * uv_size
 	var v_start = atlas_row * uv_size
 	
-	# UVs for the face (Simple box mapping section)
-	# Vertices are: [0, 1, 2, 3] corresponding to quad corners
-	# (0,1) -> (0,0) -> (1,0) -> (1,1) (roughly, dependent on vertex order)
-	
-	# Order used: v0 (TL/BL?), v1, v2, v3
-	# Let's assign standard UVs
 	var face_uvs = [
 		Vector2(u_start, v_start + uv_size), # 0, 1 (Bottom Left)
 		Vector2(u_start, v_start), # 0, 0 (Top Left)
 		Vector2(u_start + uv_size, v_start), # 1, 0 (Top Right)
 		Vector2(u_start + uv_size, v_start + uv_size) # 1, 1 (Bottom Right)
 	]
-	
-	# But we need to match the vertex list order in `vertices`
-	# vertices array order in previous code:
-	# UP: [0,1,0], [0,1,1] ... 
-	# This mapping depends on exactly how 'vertices' list matches a quad
-	# Let's just create a generic unwrapped UV set for a face
 	
 	st.set_uv(face_uvs[0])
 	st.add_vertex(pos_f + vertices[0])
