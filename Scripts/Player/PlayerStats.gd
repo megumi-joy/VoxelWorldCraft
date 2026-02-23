@@ -9,6 +9,9 @@ signal died
 @export var max_hunger: float = 100.0
 @export var hunger_decay_rate: float = 0.5 # Units per second
 
+signal gold_changed(value)
+var gold: int = 0
+
 var health: float
 var hunger: float
 
@@ -44,6 +47,10 @@ func eat(amount: float):
 	if hunger > max_hunger:
 		hunger = max_hunger
 	emit_signal("hunger_changed", hunger, max_hunger)
+
+func add_gold(amount: int):
+	gold += amount
+	emit_signal("gold_changed", gold)
 
 func emit_stats():
 	emit_signal("health_changed", health, max_health)

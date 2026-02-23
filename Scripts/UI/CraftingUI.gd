@@ -1,11 +1,12 @@
 extends Control
 
 @onready var container = $Panel/RecipeList
-var crafting_manager: CraftingManager
-var inventory: Inventory
+var crafting_manager
+var inventory
 
 func _ready():
-	crafting_manager = CraftingManager.new()
+	var cm_script = load("res://Scripts/Crafting/CraftingManager.gd")
+	crafting_manager = cm_script.new()
 	add_child(crafting_manager)
 	
 	# Find player inv

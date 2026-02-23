@@ -48,7 +48,12 @@ func _ready():
 		
 	# Connect Hotbar
 	if hotbar_ui:
-		hotbar_ui.slot_selected.connect(on_hotbar_select)
+		hotbar_ui.on_slot_selected.connect(on_hotbar_select)
+		
+	# Auto-enable AI if requested via command line
+	if OS.get_cmdline_args().has("--ai") or OS.has_feature("headless"):
+		ai_enabled = true
+		print("--- PLAYER: AI AUTO-ENABLED ---")
 
 func on_hotbar_select(item_id: int):
 	# Update selected block
@@ -93,15 +98,40 @@ func setup_nodes():
 	var shape = CapsuleShape3D.new()
 	col.shape = shape
 	add_child(col)
+	
+	# Visual Body (Simple Capsule)
+	var body_mesh = MeshInstance3D.new()
+	body_mesh.name = "BodyMesh"
+	body_mesh.mesh = CapsuleMesh.new()
+	add_child(body_mesh)
+	
+	# Visual Hand (Attached to Camera)
+	var hand = MeshInstance3D.new()
+	hand.name = "Hand"
+	hand.mesh = BoxMesh.new()
+	hand.mesh.size = Vector3(0.2, 0.2, 0.5)
+	hand.position = Vector3(0.3, -0.3, -0.5)
+	camera.add_child(hand)
 
 	var inv = load("res://Scripts/UI/Inventory.gd").new()
 	inv.name = "Inventory"
 	add_child(inv)
 	
-	# Add InventoryUI canvas layer or similar?
-	# UI usually separate. World handles UI?
-	# Let's let the player have a HUD.
-	# For now, let's assume UI is in World or added to Player.
+	# Create basic HUD if missing
+	if not has_node("HUD"):
+		var hud = Control.new()
+		hud.name = "HUD"
+		# Load and attach HUD script
+		var hud_script = load("res://Scripts/UI/HUD.gd")
+		hud.set_script(hud_script)
+		add_child(hud)
+		
+		# Hotbar is usually child of HUD or separate
+		# If HotbarUI is separate scene, we can add it
+		var hotbar_res = load("res://Scenes/HotbarUI.tscn")
+		if hotbar_res:
+			var hotbar = hotbar_res.instantiate()
+			hud.add_child(hotbar)
 	pass
 
 func _unhandled_input(event):
@@ -123,36 +153,37 @@ func _unhandled_input(event):
 
 # AI Control
 @export var ai_enabled: bool = false # Default to Manual
-var ai_target: Node3D = null
-var ai_timer: float = 0.0
 
 func _physics_process(delta):
 	# Add the gravity.
 	if not is_on_floor():
 		velocity.y -= gravity * delta
+	
+	# Handle Jump.
+	if Input.is_action_just_pressed("jump") and is_on_floor() and not ai_enabled:
+		velocity.y = JUMP_VELOCITY
 
+	# Get the input direction and handle the movement/deceleration.
+	var input_dir = Vector2.ZERO
+	if not ai_enabled:
+		input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+	
 	# AI Override
 	if ai_enabled:
 		process_ai(delta)
 	else:
-		handle_movement(delta)
-
+		var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+		if direction:
+			velocity.x = direction.x * SPEED
+			velocity.z = direction.z * SPEED
+		else:
+			velocity.x = move_toward(velocity.x, 0, SPEED)
+			velocity.z = move_toward(velocity.z, 0, SPEED)
+	
 	move_and_slide()
 	
-	if not ai_enabled and not has_node("AutoTester"):
+	if not ai_enabled:
 		manual_interaction_check()
-
-func handle_movement(delta):
-	if Input.is_action_just_pressed("jump") and is_on_floor():
-		velocity.y = JUMP_VELOCITY
-	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
-	var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	if direction:
-		velocity.x = direction.x * SPEED
-		velocity.z = direction.z * SPEED
-	else:
-		velocity.x = move_toward(velocity.x, 0, SPEED)
-		velocity.z = move_toward(velocity.z, 0, SPEED)
 
 # Interaction override for Bot
 var mock_left_click: bool = false
@@ -234,43 +265,39 @@ func manual_interaction_check():
 				voxel_world.set_voxel.rpc(place_pos, selected_block_id)
 				await get_tree().create_timer(0.2).timeout
 
+func toggle_ai():
+	ai_enabled = not ai_enabled
+	if ai_enabled:
+		show_message("AI ENABLED")
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE # Let AI handle looking, or keep captured? 
+		# User req: "AI Enabled... button showing"
+	else:
+		show_message("AI DISABLED")
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	
+	# Update HUD Button visual
+	var hud = get_node_or_null("HUD")
+	if hud and hud.has_method("update_ai_button"):
+		hud.update_ai_button(ai_enabled)
+
 func process_ai(delta):
 	ai_timer -= delta
 	
-	# Find Target
-	if not is_instance_valid(ai_target):
-		var mobs = get_tree().get_nodes_in_group("mobs") # Assuming mobs are in group
-		# Search mobs
-		var closest_dist = 999.0
-		for mob in get_tree().root.find_children("*", "Mob", true, false): # Quick hack if group missing
-			var d = global_position.distance_to(mob.global_position)
-			if d < closest_dist:
-				closest_dist = d
-				ai_target = mob
+	# Simple Wandering / Gathering AI
+	# For now, just move forward and jump occasionally to simulate "bot"
+	# Or use the logic from AutoTester if we migrate it here.
 	
-	if is_instance_valid(ai_target):
-		# Look at
-		head.look_at(ai_target.global_position, Vector3.UP, true) # Simplified look
-		
-		var dist = global_position.distance_to(ai_target.global_position)
-		if dist > 2.0:
-			# Move towards
-			var dir = (ai_target.global_position - global_position).normalized()
-			velocity.x = dir.x * SPEED
-			velocity.z = dir.z * SPEED
-		else:
-			# Attack
-			velocity.x = 0
-			velocity.z = 0
-			if ai_timer <= 0:
-				if ai_target.has_method("take_damage"):
-					print("AI Player attacking Mob!")
-					ai_target.take_damage(10.0) # Sword damage
-					ai_timer = 1.0
-	else:
-		# Wander
-		velocity.x = 0
-		velocity.z = 0
+	# Let's perform a simple "Wander & Jump" for visual confirmation
+	var direction = head.transform.basis * Vector3(0, 0, -1)
+	velocity.x = direction.x * 2.0
+	velocity.z = direction.z * 2.0
+	
+	if is_on_floor() and randf() < 0.01:
+		velocity.y = JUMP_VELOCITY
+	
+	# Rotate head slowly
+	head.rotate_y(delta * 0.5)
+
 
 func get_block_at(world, pos: Vector3) -> int:
 	var x = int(floor(pos.x))

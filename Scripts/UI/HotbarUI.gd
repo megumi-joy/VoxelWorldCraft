@@ -1,10 +1,10 @@
 extends Control
 
 @onready var grid = $HBoxContainer
-var inventory: Inventory
-var selected_slot: int = 0
+var inventory
+var slot_selected: int = 0
 
-signal slot_selected(item_id)
+signal on_slot_selected(item_id)
 
 func _ready():
 	# Find player inventory
@@ -12,6 +12,11 @@ func _ready():
 	if player and player.has_node("Inventory"):
 		inventory = player.get_node("Inventory")
 		inventory.inventory_changed.connect(update_ui)
+		
+		# Connect to stats for gold
+		if player.has_node("PlayerStats"):
+			player.get_node("PlayerStats").gold_changed.connect(func(_val): update_ui())
+			
 		update_ui()
 	
 	set_process_input(true)
@@ -19,27 +24,28 @@ func _ready():
 func _input(event):
 	if event is InputEventKey:
 		if event.pressed and event.keycode >= KEY_1 and event.keycode <= KEY_9:
-			selected_slot = event.keycode - KEY_1
+			slot_selected = event.keycode - KEY_1
 			update_selection()
 	
 	if event is InputEventMouseButton:
 		if event.is_pressed():
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				selected_slot = (selected_slot - 1 + 9) % 9
+				slot_selected = (slot_selected - 1 + 9) % 9
 				update_selection()
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				selected_slot = (selected_slot + 1) % 9
+				slot_selected = (slot_selected + 1) % 9
 				update_selection()
 
 func update_selection():
 	# Visual update
 	update_ui()
 	# Notify player logic
-	var item = inventory.items[selected_slot]
-	if item:
-		slot_selected.emit(item.id)
-	else:
-		slot_selected.emit(0) # 0 = Empty
+	if inventory and inventory.items.size() > slot_selected:
+		var item = inventory.items[slot_selected]
+		if item:
+			on_slot_selected.emit(item.id)
+		else:
+			on_slot_selected.emit(0) # 0 = Empty
 
 func update_ui():
 	if not inventory: return
@@ -48,6 +54,23 @@ func update_ui():
 	for child in grid.get_children():
 		child.queue_free()
 		
+	# Display Gold (Simple Label in the corner or part of hotbar)
+	var gold_label = get_node_or_null("GoldLabel")
+	if not gold_label:
+		gold_label = Label.new()
+		gold_label.name = "GoldLabel"
+		gold_label.position = Vector2(10, -40) # Higher above hotbar
+		# Add a background or shadow if possible, but keep it simple
+		add_child(gold_label)
+	
+	var world = get_tree().get_first_node_in_group("world")
+	var stats_node = null
+	var p = get_tree().get_first_node_in_group("player")
+	if p and p.has_node("PlayerStats"):
+		gold_label.text = "G: " + str(p.get_node("PlayerStats").gold)
+	else:
+		gold_label.text = "G: 0"
+	
 	# Build Hotbar (First 9 slots)
 	for i in range(9):
 		var slot = Panel.new()
@@ -55,7 +78,7 @@ func update_ui():
 		grid.add_child(slot)
 		
 		# Highlight selected
-		if i == selected_slot:
+		if i == slot_selected:
 			slot.modulate = Color(1, 1, 0) # Yellow highlight
 		
 		if i < inventory.size and inventory.items[i]:

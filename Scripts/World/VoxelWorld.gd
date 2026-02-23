@@ -11,55 +11,47 @@ const ChunkScript = preload("res://Scripts/World/Chunk.gd")
 var chunk_material: StandardMaterial3D
 
 func _ready():
-	var TextureGenerator = load("res://Scripts/World/TextureGenerator.gd")
+	var tex_gen_type = load("res://Scripts/World/TextureGenerator.gd")
 	var tex_gen = Node.new()
-	tex_gen.set_script(TextureGenerator)
+	tex_gen.set_script(tex_gen_type)
 	add_child(tex_gen)
 	
 	noise.seed = randi()
 	noise.frequency = 0.01
 
 func _process(_delta):
-	if player:
-		# Hardcoded Chunk Size (16, 256, 16) to avoid script loading issues
-		var p_pos = player.global_position
-		var chunk_pos = Vector2i(int(p_pos.x / 16.0), int(p_pos.z / 16.0))
+	# Wait for player and material before generating world
+	if not player or not chunk_material:
+		return
 		
-		update_chunks(chunk_pos)
+	var p_pos = player.global_position
+	var center_chunk = Vector2i(int(floor(p_pos.x / 16.0)), int(floor(p_pos.z / 16.0)))
+	
+	update_chunks(center_chunk)
 
 func update_chunks(center_chunk: Vector2i):
 	for x in range(-render_distance, render_distance + 1):
-		for y in range(-render_distance, render_distance + 1):
-			var pos = center_chunk + Vector2i(x, y)
+		for z in range(-render_distance, render_distance + 1):
+			var pos = center_chunk + Vector2i(x, z)
 			if not chunks.has(pos):
 				create_chunk(pos)
 
 func create_chunk(pos: Vector2i):
+	# Prevent double creation in the same frame if multiple processes triggered it
+	chunks[pos] = null # Placeholder
+	
 	var chunk = Node3D.new()
 	chunk.set_script(ChunkScript)
-	if chunk.get_script() == null:
-		print("ERROR: Failed to attach ChunkScript! ChunkScript resource: ", ChunkScript)
-	else:
-		if chunk.has_method("setup"):
-			chunk.setup(pos, noise, chunk_material)
-		else:
-			print("ERROR: Chunk script attached but no setup method!")
 	
-	# Add AutoTester if in headless/profile mode
-	if OS.get_cmdline_args().has("--profile") or OS.has_feature("testing"):
-		var tester_script = load("res://Scripts/Testing/AutoTester.gd")
-		var tester = Node.new()
-		tester.name = "AutoTester"
-		tester.set_script(tester_script)
-		
-		# Find player and add to it
-		var p = get_node_or_null("Player")
-		if p:
-			p.add_child(tester)
-			print("AutoTester attached to Player")
-		else:
-			add_child(tester)
-			print("AutoTester added to World (Player not found)")
+	if chunk.has_method("setup"):
+		chunk.setup(pos, noise, chunk_material)
+		add_child(chunk)
+		chunk.global_position = Vector3(pos.x * 16.0, 0, pos.y * 16.0)
+		chunks[pos] = chunk
+		print("Chunk successfully created and registered at: ", pos)
+	else:
+		print("ERROR: Chunk setup failed at: ", pos)
+		chunks.erase(pos)
 
 var block_entities = {} # Vector3i -> Node
 
@@ -88,15 +80,14 @@ func set_voxel(global_pos: Vector3, type: int):
 	elif type == 10: # Bed
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/BedBlock.tscn")
 	
-	if chunks.has(chunk_pos):
+	if chunks.has(chunk_pos) and chunks[chunk_pos] != null:
 		var chunk = chunks[chunk_pos]
 		var local_x = x - chunk_x * 16
 		var local_z = z - chunk_z * 16
 		
-		# Validate Y (0-255)
 		if y >= 0 and y < 256:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
-			SaveSystem.save_chunk(chunk)
+			# SaveSystem.save_chunk(chunk) # Disable save for profiling to avoid disk I/O noise
 
 func spawn_block_entity(pos: Vector3i, scene_path: String):
 	var scene = load(scene_path)

@@ -1,7 +1,7 @@
 extends Node
 class_name PerformanceProfiler
 
-@export var duration: float = 15.0 # Longer to allow bot actions
+@export var duration: float = 25.0 # Longer to allow bot actions
 @export var log_interval: float = 1.0
 
 var time_elapsed: float = 0.0
@@ -43,8 +43,7 @@ func _process(delta):
 		log_performance()
 		
 	if time_elapsed >= duration:
-		print("--- PERFORMANCE PROFILER FINISHED ---")
-		get_tree().quit()
+		pass # Logic handled by AutoTester
 
 func log_performance():
 	var fps = Engine.get_frames_per_second()

@@ -1,9 +1,13 @@
-[gd_scene load_steps=5 format=3 uid="uid://b8x6x4x4x4x4"]
+[gd_scene load_steps=11 format=3 uid="uid://b8x6x4x4x4x4"]
 
 [ext_resource type="Script" path="res://Scripts/Player/Player.gd" id="1_player"]
 [ext_resource type="Script" path="res://Scripts/UI/Inventory.gd" id="2_inv"]
 [ext_resource type="PackedScene" uid="uid://inventory_ui" path="res://Scenes/InventoryUI.tscn" id="3_ui"]
 [ext_resource type="Script" path="res://Scripts/Player/PlayerStats.gd" id="4_stats"]
+[ext_resource type="PackedScene" uid="uid://hotbar_ui" path="res://Scenes/HotbarUI.tscn" id="5_hotbar"]
+[ext_resource type="PackedScene" uid="uid://crafting_ui" path="res://Scenes/CraftingUI.tscn" id="6_crafting"]
+[ext_resource type="PackedScene" uid="uid://furnace_ui" path="res://Scenes/FurnaceUI.tscn" id="7_furnace"]
+[ext_resource type="PackedScene" uid="uid://trading_ui" path="res://Scenes/TradingUI.tscn" id="8_trading"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.5
@@ -34,8 +38,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 [node name="RayCast3D" type="RayCast3D" parent="Head/Camera3D"]
 target_position = Vector3(0, 0, -5)
 
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
-replication_config = SubResource("SceneReplicationConfig_1")
 
 [node name="Inventory" type="Node" parent="."]
 script = ExtResource("2_inv")
