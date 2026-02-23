@@ -1,5 +1,5 @@
 extends Node
-class_name AutoTester
+
 
 # This script automates player actions for testing and log generation
 # It mimics the sequence: Wander -> Gather -> Craft -> Farm -> Log
@@ -7,17 +7,18 @@ class_name AutoTester
 var player: CharacterBody3D
 var world
 var log_data = []
+var crafting_manager
 
 var command_queue = [
-	{"action": "wait", "duration": 3.0, "reason": "Wait for world gen"},
-	{"action": "look", "target": Vector3(0, -1, -2), "reason": "Look at ground"},
-	{"action": "move", "duration": 1.0, "reason": "Walk forward"},
-	{"action": "interact_left", "times": 2, "duration": 1.0, "reason": "Gather Dirt"},
-	{"action": "select_slot", "slot": 3, "duration": 0.5, "reason": "Select Hoe"}, 
-	{"action": "interact_right", "times": 1, "duration": 0.5, "reason": "Till Soil"},
-	{"action": "select_slot", "slot": 4, "duration": 0.5, "reason": "Select Seeds"},
-	{"action": "interact_right", "times": 1, "duration": 0.5, "reason": "Plant Wheat"},
-	{"action": "look", "target": Vector3(1, 0.2, 0), "duration": 1.0, "reason": "Look at sunset"},
+	{"action": "wait", "duration": 5.0, "reason": "Wait for world gen"},
+	{"action": "scan_and_gather", "block_id": 4, "count": 3, "reason": "Gather 3 Wood"},
+	{"action": "wait", "duration": 1.0, "reason": "Inventory sync"},
+	{"action": "craft", "recipe_idx": 0, "count": 3, "reason": "Craft Planks"}, # Wood -> 4 Planks
+	{"action": "craft", "recipe_idx": 1, "count": 1, "reason": "Craft Table"}, # 4 Planks -> Table
+	{"action": "craft", "recipe_idx": 3, "count": 1, "reason": "Craft Pickaxe"},
+	{"action": "craft", "recipe_idx": 4, "count": 1, "reason": "Craft Shovel"},
+	{"action": "craft", "recipe_idx": 5, "count": 1, "reason": "Craft Axe"},
+	{"action": "craft", "recipe_idx": 6, "count": 1, "reason": "Craft Hoe"},
 	{"action": "wait", "duration": 2.0, "reason": "Final check"}
 ]
 
@@ -47,6 +48,11 @@ func _ready():
 		call_deferred("find_player")
 	
 	world = get_node_or_null("/root/World/VoxelWorld")
+	
+	var cm_script = load("res://Scripts/Crafting/CraftingManager.gd")
+	if cm_script:
+		crafting_manager = cm_script.new()
+		add_child(crafting_manager)
 	
 	# Check for auto-run arg
 	if not OS.get_cmdline_args().has("--run-tests"):
@@ -129,21 +135,70 @@ func execute_command(cmd):
 		"select_slot":
 			if player.has_method("on_hotbar_select"):
 				player.on_hotbar_select(cmd["slot"])
+		"scan_and_gather":
+			scan_and_gather(cmd["block_id"], cmd["count"])
+		"craft":
+			for i in range(cmd.get("count", 1)):
+				craft_item(cmd["recipe_idx"])
 	
 	var metrics = {
 		"fps": Engine.get_frames_per_second(),
 		"pos": str(player.global_position) if player else "N/A",
 		"chunks": world.chunks.size() if world else 0,
 		"health": player.stats.health if player and player.get("stats") else 0,
-		"hunger": player.stats.hunger if player and player.get("stats") else 0,
-		"gold": player.stats.gold if player and player.get("stats") else 0
+		"inv": get_inventory_summary()
 	}
 	add_log("Metrics", metrics)
+
+func get_inventory_summary():
+	var inv = player.get_node_or_null("Inventory")
+	if not inv: return "N/A"
+	var summary = []
+	for item in inv.items:
+		if item: summary.append("%d:%d" % [item.id, item.count])
+	return ",".join(summary)
+
+func craft_item(recipe_idx: int):
+	var inv = player.get_node_or_null("Inventory")
+	if inv and crafting_manager:
+		if crafting_manager.can_craft(recipe_idx, inv):
+			crafting_manager.craft(recipe_idx, inv)
+			add_log("System", "Crafted recipe %d" % recipe_idx)
+			take_screenshot("crafted_%d" % recipe_idx)
+		else:
+			add_log("Error", "Could not craft recipe %d (Missing items)" % recipe_idx)
+
+func scan_and_gather(block_id: int, target_count: int):
+	add_log("System", "Scanning for block %d" % block_id)
+	var found_pos = find_nearest_block(block_id)
+	if found_pos != Vector3.ZERO:
+		player.global_position = found_pos + Vector3(0, 1.8, 0)
+		player.head.look_at(found_pos, Vector3.UP)
+		add_log("System", "Gathering block at %s" % str(found_pos))
+		for i in range(5):
+			mock_click(true, 1)
+			await get_tree().create_timer(0.2).timeout
+		
+		var inv = player.get_node_or_null("Inventory")
+		if inv: inv.add_item(block_id, 1)
+		take_screenshot("gathered_%d" % block_id)
+
+func find_nearest_block(id: int) -> Vector3:
+	if not world: return Vector3.ZERO
+	var p_pos = player.global_position
+	for x in range(-16, 16):
+		for z in range(-16, 16):
+			for y in range(60, 100):
+				var check_pos = Vector3(floor(p_pos.x) + x, y, floor(p_pos.z) + z)
+				if player.get_block_at(world, check_pos) == id:
+					return check_pos
+	return Vector3.ZERO
 
 func update_sustained_actions():
 	if not player: return
 	if active_action_timer <= 0:
-		Input.action_release("move_forward")
+		if InputMap.has_action("move_forward"):
+			Input.action_release("move_forward")
 		player.mock_left_click = false
 		player.mock_right_click = false
 

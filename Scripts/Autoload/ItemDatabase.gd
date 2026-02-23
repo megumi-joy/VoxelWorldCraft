@@ -143,7 +143,9 @@ func _ready():
 		48: ["Birch Wood", item_data_type.ItemType.BLOCK, 48],
 		49: ["Pine Wood", item_data_type.ItemType.BLOCK, 49],
 		50: ["Birch Leaves", item_data_type.ItemType.BLOCK, 50],
-		51: ["Pine Leaves", item_data_type.ItemType.BLOCK, 51]
+		51: ["Pine Leaves", item_data_type.ItemType.BLOCK, 51],
+		60: ["Leather Tunic", item_data_type.ItemType.RESOURCE, 0], # Armor Type?
+		61: ["Iron Chestplate", item_data_type.ItemType.RESOURCE, 0]
 	}
 	for id in nature_items:
 		var n = item_data_type.new()
@@ -153,6 +155,10 @@ func _ready():
 		if n.type == item_data_type.ItemType.BLOCK:
 			n.block_id = nature_items[id][2]
 		items[id] = n
+	
+	# Set Armor stats
+	if items.has(60): items[60].armor_value = 5.0
+	if items.has(61): items[61].armor_value = 20.0
 
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements

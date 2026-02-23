@@ -24,15 +24,18 @@ func _ready():
 		stats.died.connect(_on_death)
 		
 		# Connect HUD Bars
+		# Connect HUD Bars
 		var hud = get_node_or_null("HUD")
 		if hud:
-			var health_bar = hud.get_node_or_null("HealthBar")
-			if health_bar:
-				stats.health_changed.connect(func(val, max_val): health_bar.value = (val / max_val) * 100)
+			if hud.get("health_bar"):
+				stats.health_changed.connect(func(val, max_val): hud.health_bar.value = (val / max_val) * 100)
 			
-			var hunger_bar = hud.get_node_or_null("HungerBar")
-			if hunger_bar:
-				stats.hunger_changed.connect(func(val, max_val): hunger_bar.value = (val / max_val) * 100)
+			if hud.get("hunger_bar"):
+				stats.hunger_changed.connect(func(val, max_val): hud.hunger_bar.value = (val / max_val) * 100)
+			
+			if hud.get("armor_bar"):
+				stats.armor_changed.connect(func(val): hud.armor_bar.value = val) # Armor is literal? Or max 100?
+				# Let's assume max 100 for visual.
 		
 	# Setup WASD if not defined
 	add_input_mapping("move_forward", KEY_W)
@@ -153,6 +156,8 @@ func _unhandled_input(event):
 
 # AI Control
 @export var ai_enabled: bool = false # Default to Manual
+var ai_target: Node3D = null
+var ai_timer: float = 0.0
 
 func _physics_process(delta):
 	# Add the gravity.
@@ -168,19 +173,14 @@ func _physics_process(delta):
 	if not ai_enabled:
 		input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	
-	# AI Override
-	if ai_enabled:
-		process_ai(delta)
-	else:
-		var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-		if direction:
-			velocity.x = direction.x * SPEED
-			velocity.z = direction.z * SPEED
-		else:
-			velocity.x = move_toward(velocity.x, 0, SPEED)
-			velocity.z = move_toward(velocity.z, 0, SPEED)
+	# Input rotation is handled in _unhandled_input, but let's ensure it's applied correctly.
+	# To fix jitter, we can also use process for looking if needed.
 	
 	move_and_slide()
+	
+	# Fix jitter: If the player is on floor, stop subtle vertical movement
+	if is_on_floor() and velocity.y < 0:
+		velocity.y = 0
 	
 	if not ai_enabled:
 		manual_interaction_check()
@@ -203,12 +203,22 @@ func manual_interaction_check():
 		
 		# Left Click: Destroy
 		if left:
+			var item = ItemDatabase.get_item(selected_block_id)
+			var break_speed = 0.2
+			if item:
+				if item.name.contains("Pickaxe") and collider is StaticBody3D: # Simple check
+					break_speed = 0.1
+				elif item.name.contains("Axe") and collider is StaticBody3D:
+					break_speed = 0.1
+				
 			if collider is StaticBody3D and voxel_world:
 				var block_pos = point - normal * 0.1
 				voxel_world.set_voxel.rpc(block_pos, 0)
-				await get_tree().create_timer(0.2).timeout
+				await get_tree().create_timer(break_speed).timeout
 			elif collider.has_method("take_damage"):
-				collider.take_damage(10.0)
+				var dmg = 10.0
+				if item: dmg += item.damage_value
+				collider.take_damage(dmg)
 				await get_tree().create_timer(0.4).timeout
 
 		# Right Click: Place / Interact / Farm

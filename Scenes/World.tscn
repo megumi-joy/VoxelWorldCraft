@@ -1,7 +1,7 @@
-[gd_scene load_steps=8 format=3 uid="uid://world123456"]
+[gd_scene load_steps=9 format=3 uid="uid://world123456"]
 
-[ext_resource type="Script" path="res://Scripts/World/VoxelWorld.gd" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/World/World.gd" id="1_root"]
+[ext_resource type="Script" path="res://Scripts/World/VoxelWorld.gd" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/World/TimeCycle.gd" id="2_time"]
 [ext_resource type="Script" path="res://Scripts/World/MobSpawner.gd" id="3_spawner"]
 [ext_resource type="PackedScene" uid="uid://mob123456" path="res://Scenes/Mob.tscn" id="4_mob_scene"]

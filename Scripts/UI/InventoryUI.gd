@@ -7,16 +7,18 @@ func _ready():
 	# Style the main panel for Glassmorphism
 	var panel = $Panel
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.1, 0.8)
-	style.corner_radius_top_left = 10
-	style.corner_radius_top_right = 10
-	style.corner_radius_bottom_right = 10
-	style.corner_radius_bottom_left = 10
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = Color(1, 1, 1, 0.2)
+	style.bg_color = Color(0.05, 0.05, 0.05, 0.7) # Darker glass
+	style.corner_radius_top_left = 15
+	style.corner_radius_top_right = 15
+	style.corner_radius_bottom_right = 15
+	style.corner_radius_bottom_left = 15
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(1, 1, 1, 0.15) # Subtle border
+	style.shadow_color = Color(0, 0, 0, 0.3)
+	style.shadow_size = 10
 	panel.add_theme_stylebox_override("panel", style)
 	
 	# Find player inventory
@@ -58,11 +60,16 @@ func update_ui():
 		
 		# Slot Style
 		var slot_style = StyleBoxFlat.new()
-		slot_style.bg_color = Color(0.2, 0.2, 0.2, 0.6)
-		slot_style.corner_radius_top_left = 5
-		slot_style.corner_radius_top_right = 5
-		slot_style.corner_radius_bottom_right = 5
-		slot_style.corner_radius_bottom_left = 5
+		slot_style.bg_color = Color(1, 1, 1, 0.05) # Very subtle
+		slot_style.corner_radius_top_left = 8
+		slot_style.corner_radius_top_right = 8
+		slot_style.corner_radius_bottom_right = 8
+		slot_style.corner_radius_bottom_left = 8
+		slot_style.border_width_left = 1
+		slot_style.border_width_top = 1
+		slot_style.border_width_right = 1
+		slot_style.border_width_bottom = 1
+		slot_style.border_color = Color(1, 1, 1, 0.1)
 		slot.add_theme_stylebox_override("panel", slot_style)
 		
 		grid.add_child(slot)

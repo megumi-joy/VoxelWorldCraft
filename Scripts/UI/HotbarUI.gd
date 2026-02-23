@@ -71,29 +71,53 @@ func update_ui():
 	else:
 		gold_label.text = "G: 0"
 	
-	# Build Hotbar (First 9 slots)
+		# Build Hotbar (First 9 slots)
 	for i in range(9):
-		var slot = Panel.new()
-		slot.custom_minimum_size = Vector2(50, 50)
+		var slot = PanelContainer.new() # Use PanelContainer for better layout
+		slot.custom_minimum_size = Vector2(54, 54)
 		grid.add_child(slot)
+		
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0, 0, 0, 0.4)
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_right = 8
+		style.corner_radius_bottom_left = 8
+		style.border_width_left = 2
+		style.border_width_top = 2
+		style.border_width_right = 2
+		style.border_width_bottom = 2
 		
 		# Highlight selected
 		if i == slot_selected:
-			slot.modulate = Color(1, 1, 0) # Yellow highlight
+			style.border_color = Color(1, 0.8, 0, 0.8) # Gold border
+			style.bg_color = Color(1, 1, 1, 0.1)
+		else:
+			style.border_color = Color(1, 1, 1, 0.1)
+			
+		slot.add_theme_stylebox_override("panel", style)
 		
 		if i < inventory.size and inventory.items[i]:
 			var item = inventory.items[i]
-			# Access autoload directly via node path to avoid lint issues
 			var db = get_node("/root/ItemDatabase")
 			var item_data
 			if db:
 				item_data = db.get_item(item.id)
 			
 			if item_data:
+				var vbox = VBoxContainer.new()
+				vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+				slot.add_child(vbox)
+				
 				var label = Label.new()
-				label.text = str(item_data.name) + "\n" + str(item.count)
+				label.text = str(item_data.name)
 				label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				label.autowrap_mode = TextServer.AUTOWRAP_WORD
-				label.size = Vector2(50, 50)
-				slot.add_child(label)
+				label.add_theme_font_size_override("font_size", 10)
+				vbox.add_child(label)
+				
+				var count = Label.new()
+				count.text = "x" + str(item.count)
+				count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+				count.add_theme_font_size_override("font_size", 10)
+				count.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+				vbox.add_child(count)

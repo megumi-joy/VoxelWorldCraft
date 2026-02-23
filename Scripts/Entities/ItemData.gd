@@ -16,3 +16,4 @@ enum ItemType {BLOCK, TOOL, RESOURCE, CONSUMABLE}
 # Stats
 @export var damage_value: float = 0.0
 @export var nutrition_value: float = 0.0
+@export var armor_value: float = 0.0

@@ -9,6 +9,9 @@ signal died
 @export var max_hunger: float = 100.0
 @export var hunger_decay_rate: float = 0.5 # Units per second
 
+signal armor_changed(value)
+var armor: float = 0.0
+
 signal gold_changed(value)
 var gold: int = 0
 
@@ -30,11 +33,20 @@ func _process(delta):
 		emit_signal("hunger_changed", hunger, max_hunger)
 
 func take_damage(amount: float):
-	health -= amount
+	# Apply armor reduction (simple linear reduction for now)
+	var reduction = armor * 0.1 # Each armor point reduces 10%? No, let's say armor is percentage.
+	# Let's say armor is a flat value that reduces damage but has a cap.
+	var final_damage = amount * (1.0 - (armor / (armor + 50.0))) # Diminishing returns formula
+	
+	health -= final_damage
 	if health <= 0:
 		health = 0
 		emit_signal("died")
 	emit_signal("health_changed", health, max_health)
+
+func set_armor(value: float):
+	armor = value
+	emit_signal("armor_changed", armor)
 
 func heal(amount: float):
 	health += amount
