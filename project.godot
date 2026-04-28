@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 NetworkManager="*res://Scripts/Autoload/NetworkManager.gd"
 ItemDatabase="*res://Scripts/Autoload/ItemDatabase.gd"
 SaveSystem="*res://Scripts/Autoload/SaveSystem.gd"
+AutoTester="*res://Scripts/Testing/AutoTester.gd"
 
 [display]
 

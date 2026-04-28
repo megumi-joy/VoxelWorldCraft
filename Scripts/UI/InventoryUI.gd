@@ -1,15 +1,39 @@
 extends Control
 
 @onready var grid = $Panel/GridContainer
-var inventory: Inventory
+var inventory
 
 func _ready():
+	# Style the main panel for Glassmorphism
+	var panel = $Panel
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.05, 0.05, 0.7) # Darker glass
+	style.corner_radius_top_left = 15
+	style.corner_radius_top_right = 15
+	style.corner_radius_bottom_right = 15
+	style.corner_radius_bottom_left = 15
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(1, 1, 1, 0.15) # Subtle border
+	style.shadow_color = Color(0, 0, 0, 0.3)
+	style.shadow_size = 10
+	panel.add_theme_stylebox_override("panel", style)
+	
 	# Find player inventory
 	var player = get_tree().get_first_node_in_group("player")
 	if player and player.has_node("Inventory"):
 		inventory = player.get_node("Inventory")
 		inventory.inventory_changed.connect(update_ui)
 		update_ui()
+	
+	# Ensure Input Map exists
+	if not InputMap.has_action("inventory"):
+		InputMap.add_action("inventory")
+		var ev = InputEventKey.new()
+		ev.physical_keycode = KEY_E
+		InputMap.action_add_event("inventory", ev)
 	
 	set_process_input(true)
 
@@ -29,27 +53,46 @@ func update_ui():
 	for child in grid.get_children():
 		child.queue_free()
 		
-	# Rebuild (inefficient but safe for now)
+	# Rebuild
 	for i in range(inventory.size):
-		var slot = Panel.new()
-		slot.custom_minimum_size = Vector2(50, 50)
+		var slot = PanelContainer.new()
+		slot.custom_minimum_size = Vector2(60, 60)
+		
+		# Slot Style
+		var slot_style = StyleBoxFlat.new()
+		slot_style.bg_color = Color(1, 1, 1, 0.05) # Very subtle
+		slot_style.corner_radius_top_left = 8
+		slot_style.corner_radius_top_right = 8
+		slot_style.corner_radius_bottom_right = 8
+		slot_style.corner_radius_bottom_left = 8
+		slot_style.border_width_left = 1
+		slot_style.border_width_top = 1
+		slot_style.border_width_right = 1
+		slot_style.border_width_bottom = 1
+		slot_style.border_color = Color(1, 1, 1, 0.1)
+		slot.add_theme_stylebox_override("panel", slot_style)
+		
 		grid.add_child(slot)
 		
 		var item = inventory.items[i]
 		if item:
-			# Use get_node to avoid static access lint errors, assuming ItemDatabase is autoloaded as "ItemDatabase"
 			var db = get_node("/root/ItemDatabase")
 			if db:
 				var item_data = db.get_item(item.id)
 				if item_data:
+					var vbox = VBoxContainer.new()
+					slot.add_child(vbox)
+					
+					# Name
 					var label = Label.new()
-					label.text = str(item_data.name) + "\n" + str(item.count)
+					label.text = item_data.name
 					label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-					label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-					label.autowrap_mode = TextServer.AUTOWRAP_WORD
-					label.size = Vector2(50, 50)
-					slot.add_child(label)
-					# TODO: TextureRect if icon exists
-
-# Hotbar updates can be handled here or in a separate script?
-# Let's assume HotbarUI will be a separate node reading the same inventory.
+					label.add_theme_font_size_override("font_size", 10)
+					vbox.add_child(label)
+					
+					# Count
+					var count_lbl = Label.new()
+					count_lbl.text = "x" + str(item.count)
+					count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+					count_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+					vbox.add_child(count_lbl)

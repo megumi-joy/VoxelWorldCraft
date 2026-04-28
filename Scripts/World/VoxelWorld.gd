@@ -1,120 +1,57 @@
-@tool
 extends Node3D
 class_name VoxelWorld
 
 var chunks = {}
 var noise = FastNoiseLite.new()
+const ChunkScript = preload("res://Scripts/World/Chunk.gd")
 
 @export var render_distance = 2
 @export var player: Node3D
-@export var spawn_on_start: bool = true
-
-@export var generate_preview: bool = false:
-	set(value):
-		generate_preview = false
-		if value:
-			generate_editor_preview()
-
-@export var clear_preview: bool = false:
-	set(value):
-		clear_preview = false
-		if value:
-			clear_editor_chunks()
 
 var chunk_material: StandardMaterial3D
 
 func _ready():
-	# Runtime Only Logic
-	if not Engine.is_editor_hint():
-		var tex_gen = TextureGenerator.new()
-		add_child(tex_gen)
-		
-		noise.seed = randi()
-		noise.frequency = 0.01
-		
-		# Multiplayer Spawning
-		call_deferred("deferred_multiplayer_setup")
-
-func deferred_multiplayer_setup():
-	printerr("VoxelWorld Ready (Parent: ", get_parent().name, "). is_server: ", multiplayer.is_server())
-	if multiplayer.is_server() and spawn_on_start:
-		multiplayer.peer_connected.connect(spawn_player)
-		multiplayer.peer_disconnected.connect(remove_player)
-		
-		# Spawn Host
-		call_deferred("spawn_player", 1)
-
-func generate_editor_preview():
-	print("Generating Editor Preview...")
-	clear_editor_chunks()
+	var tex_gen_type = load("res://Scripts/World/TextureGenerator.gd")
+	var tex_gen = Node.new()
+	tex_gen.set_script(tex_gen_type)
+	add_child(tex_gen)
 	
-	if not noise: noise = FastNoiseLite.new()
 	noise.seed = randi()
 	noise.frequency = 0.01
-	
-	# Generate 3x3 area
-	for x in range(-1, 2):
-		for z in range(-1, 2):
-			create_chunk(Vector2i(x, z))
-
-func clear_editor_chunks():
-	print("Clearing Preview...")
-	chunks.clear()
-	for child in get_children():
-		if child is Chunk:
-			child.queue_free()
-
-func spawn_player(id: int):
-	if id == 1:
-		# Check if already spawned?
-		if has_node(str(id)): return
-		
-	var player_scene = load("res://Scenes/Player.tscn")
-	var p = player_scene.instantiate()
-	p.name = str(id)
-	
-	# Host Spawn Point
-	p.position = Vector3(0, 80, 0) # High up to avoid stuck
-	
-	# Add directly to Parent (World) to ensure MultiplayerSpawner picks it up
-	# Use deferred to avoid "busy parent" error
-	get_parent().add_child.call_deferred(p)
-	
-	if id == multiplayer.get_unique_id():
-		player = p
-
-func remove_player(id: int):
-	var p = get_parent().get_node_or_null(str(id))
-	if p:
-		p.queue_free()
 
 func _process(_delta):
-	# Runtime Only
-	if Engine.is_editor_hint(): return
+	# Wait for player and material before generating world
+	if not player or not chunk_material:
+		return
+		
+	var p_pos = player.global_position
+	var center_chunk = Vector2i(int(floor(p_pos.x / 16.0)), int(floor(p_pos.z / 16.0)))
 	
-	if player and is_instance_valid(player):
-		var p_pos = player.global_position
-		var chunk_pos = Vector2i(int(p_pos.x / Chunk.CHUNK_SIZE.x), int(p_pos.z / Chunk.CHUNK_SIZE.z))
-		update_chunks(chunk_pos)
+	update_chunks(center_chunk)
 
 func update_chunks(center_chunk: Vector2i):
 	for x in range(-render_distance, render_distance + 1):
-		for y in range(-render_distance, render_distance + 1):
-			var pos = center_chunk + Vector2i(x, y)
+		for z in range(-render_distance, render_distance + 1):
+			var pos = center_chunk + Vector2i(x, z)
 			if not chunks.has(pos):
 				create_chunk(pos)
 
 func create_chunk(pos: Vector2i):
-	var chunk = Chunk.new(pos, noise, chunk_material)
+	# Prevent double creation in the same frame if multiple processes triggered it
+	chunks[pos] = null # Placeholder
 	
-	# Load existing data BEFORE add_child so _ready sees it
-	# Use SaveSystemClass static methods to work in Editor
-	if SaveSystemClass.has_chunk(pos):
-		SaveSystemClass.load_chunk(chunk)
+	var chunk = Node3D.new()
+	chunk.set_script(ChunkScript)
 	
-	add_child(chunk)
-	chunk.global_position = Vector3(pos.x * Chunk.CHUNK_SIZE.x, 0, pos.y * Chunk.CHUNK_SIZE.z)
-	chunks[pos] = chunk
+	if chunk.has_method("setup"):
+		chunk.setup(pos, noise, chunk_material)
+		add_child(chunk)
+		chunk.global_position = Vector3(pos.x * 16.0, 0, pos.y * 16.0)
+		chunks[pos] = chunk
+		print("Chunk successfully created and registered at: ", pos)
+	else:
+		print("ERROR: Chunk setup failed at: ", pos)
+		chunks.erase(pos)
 
 var block_entities = {} # Vector3i -> Node
 
@@ -125,8 +62,8 @@ func set_voxel(global_pos: Vector3, type: int):
 	var z = int(floor(global_pos.z))
 	var pos_i = Vector3i(x, y, z)
 	
-	var chunk_x = int(floor(float(x) / Chunk.CHUNK_SIZE.x))
-	var chunk_z = int(floor(float(z) / Chunk.CHUNK_SIZE.z))
+	var chunk_x = int(floor(float(x) / 16.0))
+	var chunk_z = int(floor(float(z) / 16.0))
 	var chunk_pos = Vector2i(chunk_x, chunk_z)
 	
 	# Handle Block Entities
@@ -142,19 +79,15 @@ func set_voxel(global_pos: Vector3, type: int):
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/CraftingTableBlock.tscn")
 	elif type == 10: # Bed
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/BedBlock.tscn")
-	elif type == 14: # Crop
-		spawn_block_entity(pos_i, "res://Scenes/Blocks/CropBlock.tscn")
 	
-	if chunks.has(chunk_pos):
+	if chunks.has(chunk_pos) and chunks[chunk_pos] != null:
 		var chunk = chunks[chunk_pos]
-		var local_x = x - chunk_x * Chunk.CHUNK_SIZE.x
-		var local_z = z - chunk_z * Chunk.CHUNK_SIZE.z
+		var local_x = x - chunk_x * 16
+		var local_z = z - chunk_z * 16
 		
-		# Validate Y (0-255)
-		if y >= 0 and y < Chunk.CHUNK_SIZE.y:
+		if y >= 0 and y < 256:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
-			if not Engine.is_editor_hint():
-				SaveSystemClass.save_chunk(chunk)
+			# SaveSystem.save_chunk(chunk) # Disable save for profiling to avoid disk I/O noise
 
 func spawn_block_entity(pos: Vector3i, scene_path: String):
 	var scene = load(scene_path)

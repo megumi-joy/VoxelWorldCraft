@@ -16,6 +16,22 @@ const TREE_STRUCTURE = [
 	[Vector3i(0, 2, -1), 5],
 ]
 
+const BIRCH_TREE = [
+	[Vector3i(0, 0, 0), 48], [Vector3i(0, 1, 0), 48], [Vector3i(0, 2, 0), 48], # Trunk
+	[Vector3i(0, 3, 0), 50], [Vector3i(1, 3, 0), 50], [Vector3i(-1, 3, 0), 50], [Vector3i(0, 3, 1), 50], [Vector3i(0, 3, -1), 50], # Leaves
+	[Vector3i(0, 4, 0), 50] # Top
+]
+
+const PINE_TREE = [
+	[Vector3i(0, 0, 0), 49], [Vector3i(0, 1, 0), 49], [Vector3i(0, 2, 0), 49], [Vector3i(0, 3, 0), 49], # Trunk
+	[Vector3i(0, 2, 1), 51], [Vector3i(0, 2, -1), 51], [Vector3i(1, 2, 0), 51], [Vector3i(-1, 2, 0), 51], # Base Leaves
+	[Vector3i(0, 4, 0), 51], [Vector3i(0, 5, 0), 51] # Top
+]
+
+const CACTUS_STRUCTURE = [
+	[Vector3i(0, 0, 0), 47], [Vector3i(0, 1, 0), 47], [Vector3i(0, 2, 0), 47]
+]
+
 const HOUSE_STRUCTURE = [
 	# Floor (Woods) 3x3
 	[Vector3i(-1, 0, -1), 4], [Vector3i(0, 0, -1), 4], [Vector3i(1, 0, -1), 4],
@@ -29,12 +45,22 @@ const HOUSE_STRUCTURE = [
 ]
 
 func generate_tree(chunk, local_pos: Vector3i):
-	for block in TREE_STRUCTURE:
-		var pos = local_pos + block[0]
-		if is_in_chunk(pos): chunk.set_block(pos, block[1])
+	place_structure(chunk, local_pos, TREE_STRUCTURE)
+
+func generate_birch(chunk, local_pos: Vector3i):
+	place_structure(chunk, local_pos, BIRCH_TREE)
+
+func generate_pine(chunk, local_pos: Vector3i):
+	place_structure(chunk, local_pos, PINE_TREE)
+
+func generate_cactus(chunk, local_pos: Vector3i):
+	place_structure(chunk, local_pos, CACTUS_STRUCTURE)
 
 func generate_house(chunk, local_pos: Vector3i):
-	for block in HOUSE_STRUCTURE:
+	place_structure(chunk, local_pos, HOUSE_STRUCTURE)
+
+func place_structure(chunk, local_pos: Vector3i, structure: Array):
+	for block in structure:
 		var pos = local_pos + block[0]
 		if is_in_chunk(pos): chunk.set_block(pos, block[1])
 
