@@ -1,7 +1,10 @@
+extends Control
+
 var health_bar: ProgressBar
 var hunger_bar: ProgressBar
 var armor_bar: ProgressBar
 var message_label: Label
+var ai_button: Button
 
 func _ready():
 	setup_glass_theme()
