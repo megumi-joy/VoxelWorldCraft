@@ -26,3 +26,5 @@ AutoTester="*res://Scripts/Testing/AutoTester.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+[editor]
+movie_writer/movie_file="/home/yip/Documents/VoxelWorldCraft/phase5_test.avi"

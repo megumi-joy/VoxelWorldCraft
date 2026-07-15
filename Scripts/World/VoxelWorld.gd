@@ -9,8 +9,12 @@ const ChunkScript = preload("res://Scripts/World/Chunk.gd")
 @export var player: Node3D
 
 var chunk_material: StandardMaterial3D
+var simulator: Node
 
 func _ready():
+	simulator = load("res://Scripts/Simulation/Simulator.gd").new()
+	add_child(simulator)
+	
 	var tex_gen_type = load("res://Scripts/World/TextureGenerator.gd")
 	var tex_gen = Node.new()
 	tex_gen.set_script(tex_gen_type)
@@ -73,12 +77,19 @@ func set_voxel(global_pos: Vector3, type: int):
 			entity.queue_free()
 		block_entities.erase(pos_i)
 	
+	# Remove from simulator if it was an electronic component
+	if simulator:
+		simulator.remove_node(pos_i)
+	
+	
 	if type == 8: # Furnace
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/FurnaceBlock.tscn")
 	elif type == 9: # Crafting Table
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/CraftingTableBlock.tscn")
 	elif type == 10: # Bed
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/BedBlock.tscn")
+	elif type >= 100: # Electronics
+		handle_electronic_block(pos_i, type)
 	
 	if chunks.has(chunk_pos) and chunks[chunk_pos] != null:
 		var chunk = chunks[chunk_pos]
@@ -88,6 +99,24 @@ func set_voxel(global_pos: Vector3, type: int):
 		if y >= 0 and y < 256:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
 			# SaveSystem.save_chunk(chunk) # Disable save for profiling to avoid disk I/O noise
+
+func handle_electronic_block(pos: Vector3i, type: int):
+	# Register in Simulator
+	if type == 100: simulator.add_node(pos, "n-type")
+	elif type == 101: simulator.add_node(pos, "p-type")
+	elif type == 102: simulator.add_node(pos, "inductor")
+	elif type == 103: simulator.add_node(pos, "source-pos")
+	elif type == 104: simulator.add_node(pos, "source-neg")
+	elif type == 105: simulator.add_node(pos, "wire")
+	
+	# Try to spawn 3D component if it exists
+	var paths = {
+		100: "res://Scenes/Blocks/Components/SiliconN.tscn",
+		101: "res://Scenes/Blocks/Components/SiliconP.tscn",
+		102: "res://Scenes/Blocks/Components/Inductor.tscn",
+	}
+	if paths.has(type):
+		spawn_block_entity(pos, paths[type])
 
 func spawn_block_entity(pos: Vector3i, scene_path: String):
 	var scene = load(scene_path)

@@ -1,2 +1,5 @@
 # Godot 4+ specific ignores
 .godot/
+
+# Local test recordings (large binaries, not source)
+phase5_test.avi

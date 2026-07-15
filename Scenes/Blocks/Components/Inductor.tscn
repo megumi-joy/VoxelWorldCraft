@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://inductor_component"]
+
+[node name="Inductor" type="Node3D"]
+
+[node name="Coil" type="CSGTorus3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+inner_radius = 0.2
+outer_radius = 0.4
+sides = 16
+ring_sides = 8
+
+[node name="Material" type="StandardMaterial3D" parent="Coil"]
+albedo_color = Color(0.8, 0.5, 0.2, 1)
+metallic = 0.8
+roughness = 0.3
+
+[node name="Base" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.4, 0)
+size = Vector3(0.5, 0.1, 0.5)
+
+[node name="Material" type="StandardMaterial3D" parent="Base"]
+albedo_color = Color(0.3, 0.3, 0.3, 1)

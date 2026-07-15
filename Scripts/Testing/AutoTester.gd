@@ -55,11 +55,23 @@ func _ready():
 		add_child(crafting_manager)
 	
 	# Check for auto-run arg
-	if not OS.get_cmdline_args().has("--run-tests"):
+	if OS.get_cmdline_args().has("--run-tests=phase5"):
+		print("--- AUTO TESTER ACTIVATED (PHASE 5: ELECTRONICS) ---")
+		command_queue = [
+			{"action": "wait", "duration": 2.0, "reason": "Wait for world gen"},
+			{"action": "give_items", "reason": "Give electronics"},
+			{"action": "build_kacher", "duration": 5.0, "reason": "Build Brovin Kacher"},
+			{"action": "wait", "duration": 3.0, "reason": "Watch Kacher run"},
+			{"action": "toggle_schematic", "duration": 3.0, "reason": "View Schematic"},
+			{"action": "wait", "duration": 2.0, "reason": "Watch Schematic"},
+			{"action": "build_pwm", "duration": 5.0, "reason": "Build PWM Motor"},
+			{"action": "wait", "duration": 5.0, "reason": "Watch PWM Motor run"}
+		]
+	elif not OS.get_cmdline_args().has("--run-tests"):
 		set_process(false) # Disable if not testing
 		print("--- AUTO TESTER IDLE (Use --run-tests to activate) ---")
 	else:
-		print("--- AUTO TESTER ACTIVATED ---")
+		print("--- AUTO TESTER ACTIVATED (STANDARD) ---")
 
 func find_player():
 	var p = get_tree().get_first_node_in_group("player")
@@ -140,7 +152,40 @@ func execute_command(cmd):
 		"craft":
 			for i in range(cmd.get("count", 1)):
 				craft_item(cmd["recipe_idx"])
-	
+		"give_items":
+			var inv = player.get_node_or_null("Inventory")
+			if inv:
+				inv.add_item(100, 10) # N-type
+				inv.add_item(101, 10) # P-type
+				inv.add_item(102, 10) # Inductor
+				inv.add_item(103, 10) # Source+
+				inv.add_item(104, 10) # Source-
+				inv.add_item(105, 50) # Wire
+		"toggle_schematic":
+			var hud = get_node_or_null("/root/World/HUD")
+			if hud and hud.has_method("_on_schematic_button_pressed"):
+				hud._on_schematic_button_pressed()
+		"build_kacher":
+			build_structure(Vector3i(2, 65, 2), [
+				[Vector3i(0, 0, 0), 103], [Vector3i(1, 0, 0), 105], [Vector3i(2, 0, 0), 102], # L1
+				[Vector3i(3, 0, 0), 100], [Vector3i(4, 0, 0), 101], [Vector3i(5, 0, 0), 100], # NPN
+				[Vector3i(6, 0, 0), 105], [Vector3i(7, 0, 0), 104], # To Ground
+				[Vector3i(2, 0, 1), 102], [Vector3i(2, 0, 2), 102]  # Secondary coil
+			])
+		"build_pwm":
+			build_structure(Vector3i(2, 65, 8), [
+				[Vector3i(0, 0, 0), 103], [Vector3i(1, 0, 0), 100], [Vector3i(2, 0, 0), 101], 
+				[Vector3i(3, 0, 0), 100], [Vector3i(4, 0, 0), 102]
+			])
+
+func build_structure(base: Vector3i, blocks: Array):
+	if not world: return
+	for b in blocks:
+		world.set_voxel(Vector3(base.x + b[0].x, base.y + b[0].y, base.z + b[0].z), b[1])
+	var p_pos = Vector3(base.x + 3, base.y + 5, base.z + 5)
+	player.global_position = p_pos
+	player.head.look_at(Vector3(base.x + 3, base.y, base.z), Vector3.UP)
+
 	var metrics = {
 		"fps": Engine.get_frames_per_second(),
 		"pos": str(player.global_position) if player else "N/A",

@@ -2,6 +2,9 @@ var health_bar: ProgressBar
 var hunger_bar: ProgressBar
 var armor_bar: ProgressBar
 var message_label: Label
+var ai_button: Button
+var schematic_button: Button
+var schematic_overlay: Control
 
 func _ready():
 	setup_glass_theme()
@@ -47,6 +50,15 @@ func create_hud_elements():
 	ai_button.pressed.connect(_on_ai_button_pressed)
 	add_child(ai_button)
 	update_ai_button(false)
+	
+	# Schematic Button (Top Right, below AI)
+	schematic_button = Button.new()
+	schematic_button.name = "SchematicButton"
+	schematic_button.text = "SHOW SCHEMATIC"
+	schematic_button.position = Vector2(get_viewport_rect().size.x - 160, 80)
+	schematic_button.custom_minimum_size = Vector2(140, 45)
+	schematic_button.pressed.connect(_on_schematic_button_pressed)
+	add_child(schematic_button)
 	
 	# Message Label
 	message_label = Label.new()
@@ -111,3 +123,15 @@ func update_ai_button(enabled: bool):
 		ai_button.text = "MANUAL"
 		style.border_color = Color(1, 1, 1, 0.2)
 	ai_button.add_theme_stylebox_override("normal", style)
+
+func _on_schematic_button_pressed():
+	if schematic_overlay:
+		schematic_overlay.queue_free()
+		schematic_overlay = null
+		schematic_button.text = "SHOW SCHEMATIC"
+	else:
+		var scene = load("res://Scenes/UI/SchematicOverlay.tscn")
+		if scene:
+			schematic_overlay = scene.instantiate()
+			add_child(schematic_overlay)
+			schematic_button.text = "HIDE SCHEMATIC"

@@ -160,20 +160,22 @@ func _ready():
 	if items.has(60): items[60].armor_value = 5.0
 	if items.has(61): items[61].armor_value = 20.0
 
-	# Chemical Elements (Simplified range for "Periodic Table")
-	# ID 100+ reserved for elements
-	var elements = ["Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium", "Aluminum", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium", "Indium", "Tin", "Antimony", "Tellurium", "Iodine", "Xenon", "Cesium", "Barium", "Lanthanum", "Cerium", "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium", "Iridium", "Platinum", "Gold", "Mercury", "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon", "Francium", "Radium", "Actinium", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium", "Roentgenium", "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson"]
-	
-	for i in range(elements.size()):
-		var e = item_data_type.new()
-		e.id = 100 + i
-		e.name = elements[i]
-		e.type = item_data_type.ItemType.RESOURCE # Most are resources
-		if elements[i] in ["Iron", "Gold", "Copper", "Silver", "Lead", "Tin", "Aluminum", "Titanium", "Uranium"]:
-			e.type = item_data_type.ItemType.BLOCK # Ores are blocks? Or Resource items dropped by blocks? 
-			# Let's make them Resource Items for now, and have specific Block IDs for their Ore Block form.
-			# Re-mapping: Iron Ore (ID 6) drops Iron (Element 25, ID 125).
-		items[e.id] = e
+	# ID 100-105: Electronic Components
+	var electronic_items = {
+		100: ["N-Type Silicon", item_data_type.ItemType.BLOCK, 100],
+		101: ["P-Type Silicon", item_data_type.ItemType.BLOCK, 101],
+		102: ["Inductor Coil", item_data_type.ItemType.BLOCK, 102],
+		103: ["Battery (+)", item_data_type.ItemType.BLOCK, 103],
+		104: ["Battery (-)", item_data_type.ItemType.BLOCK, 104],
+		105: ["Copper Wire", item_data_type.ItemType.BLOCK, 105],
+	}
+	for id in electronic_items:
+		var n = item_data_type.new()
+		n.id = id
+		n.name = electronic_items[id][0]
+		n.type = electronic_items[id][1]
+		n.block_id = electronic_items[id][2]
+		items[id] = n
 
 func get_item(id: int):
 	if items.has(id):
