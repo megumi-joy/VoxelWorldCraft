@@ -17,6 +17,19 @@ func spawn_player():
 		# Assign player to VoxelWorld
 		if voxel_world:
 			voxel_world.player = player
+
+			# Player.tscn hardcodes spawn at y=1.7, but terrain columns are
+			# filled solid from y=0 up to the generated surface height
+			# (Chunk.gd: int((noise+1)*32)+64, i.e. ~64-128). That leaves the
+			# player embedded inside solid rock at spawn. Compute the actual
+			# surface height at the spawn XZ using the same noise instance/
+			# formula Chunk.gd uses, and spawn a couple blocks above it.
+			if voxel_world.noise:
+				var spawn_x = player.position.x
+				var spawn_z = player.position.z
+				var surface_height = int((voxel_world.noise.get_noise_2d(spawn_x, spawn_z) + 1) * 32) + 64
+				player.position.y = surface_height + 2
+
 			print("Player spawned and assigned to VoxelWorld")
 	else:
 		print("ERROR: Could not load Player scene")
