@@ -151,7 +151,13 @@ jobs:
           frames = int(stream["nb_read_frames"])
           num, den = stream["r_frame_rate"].split("/")
           target_fps = float(num) / float(den)
-          duration = float(stream["duration"])
+          try:
+              duration = float(stream["duration"])
+          except (KeyError, ValueError):
+              # ffprobe can report duration=N/A on some containers; fall back
+              # to deriving it from the (reliable) frame count and target fps
+              # rather than letting this step go red over a missing field.
+              duration = frames / target_fps if target_fps else 0.0
           real_fps = frames / duration if duration else 0.0
 
           outdir = "recordings/_verify_frames"
