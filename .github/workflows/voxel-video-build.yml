@@ -1,0 +1,308 @@
+name: Voxel video & build
+
+# Regularly (schedule) and on-demand (workflow_dispatch) produce two things:
+#   1. A smooth gameplay video, recorded headlessly via Godot's Movie Maker
+#      mode. Movie Maker renders every frame fully and writes it at a FIXED
+#      target fps (--fixed-fps) regardless of how slow the underlying
+#      renderer is, so the output is always smooth even under software
+#      rendering (llvmpipe/swiftshader) on a GitHub-hosted runner. A plain
+#      screen capture would instead show real wall-clock render speed, which
+#      is the ~1-FPS trap this workflow avoids.
+#   2. A best-effort polished build (Web export), once the repo has an
+#      export_presets.cfg (it does not yet -- see the `export-build` job).
+#
+# Both artifacts are uploaded to the run (guaranteed) and, if secrets are
+# configured, pushed to the owner via the games Telegram bot (best-effort).
+#
+# NOTE ON THE `--write-movie` INVOCATION BELOW: earlier docs/scripts in
+# sibling game repos reference `--movie-maker`/`--movie-file`, which do not
+# exist in Godot 4.3 -- verified live against `godot --help` in the 4.3 CI
+# image. The real flags are `--write-movie`, `--fixed-fps`, `--quit-after`.
+# Also: the standard `xvfb-run` wrapper hangs forever in this container (its
+# SIGUSR1 readiness handshake never returns) -- Xvfb is started manually and
+# polled for its X11 socket instead. Neither xvfb nor ffmpeg nor python3 are
+# present in the base image (verified: `which` finds none of them), so this
+# workflow installs them at job runtime via apt-get rather than depending on
+# a pre-built derived image.
+
+on:
+  workflow_dispatch:
+    inputs:
+      frames:
+        description: "Frames to record at the fixed fps (600 @ 60fps = 10s)"
+        required: false
+        default: "600"
+  schedule:
+    # Weekly, Monday 06:00 UTC. Godot Movie Maker recording is render-heavy;
+    # weekly keeps CI-minute cost sane while still being "regular" per the
+    # owner's ask. Bump via workflow_dispatch for on-demand runs.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voxel-video-build
+  cancel-in-progress: false
+
+env:
+  RECORD_SCENE: "res://Scenes/World.tscn"
+  # World.tscn is targeted directly, NOT MainMenu.tscn: MainMenu's
+  # auto-start path is currently dead code (a guard trips on the only
+  # invocation, so NetworkManager.host_game() is never reached -- see PR #2),
+  # and World.gd spawns the player itself whenever there is no multiplayer
+  # peer. This is the same recipe already proven (LIVE-VERIFIED) on branch
+  # task/movie-maker-voxel-render to produce a real, moving, non-static clip.
+  RECORD_RES: "480x270"
+  # llvmpipe is fill-rate bound -- render small and let ffmpeg's scale filter
+  # do any upscale/fit later, rather than rendering large and downscaling.
+  RECORD_FIXED_FPS: "60"
+  RECORD_EXTRA_ARGS: "--ai"
+  # Passed through to the running project via OS.get_cmdline_args(). Currently
+  # inert (AI movement is dead code per PR #2's findings) but harmless, and
+  # will start mattering once AI wiring lands -- matches what was actually
+  # used to produce the verified reference clip.
+  WEB_EXPORT_PRESET: "Web"
+  ANDROID_EXPORT_PRESET: "Android"
+
+jobs:
+  record-video:
+    name: Record gameplay video (Movie Maker, fixed-fps)
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xvfb, ffmpeg, python (not present in the base image)
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends xvfb ffmpeg python3 python3-numpy python3-pil
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Import project / parse-error health check
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit-after 200 2>&1 | tee import.log
+          if grep -qiE "parse error|failed to load script|script error" import.log; then
+            echo "::error::Godot reported parse/script errors during import - see import.log"
+            exit 1
+          fi
+          echo "Import clean: no parse errors."
+
+      - name: Record via Movie Maker (manual Xvfb start+poll; xvfb-run hangs in this image)
+        run: |
+          set -euo pipefail
+          mkdir -p recordings
+          Xvfb :99 -screen 0 1280x720x24 &
+          XVFB_PID=$!
+          for _ in $(seq 1 50); do
+            [ -e /tmp/.X11-unix/X99 ] && break
+            sleep 0.2
+          done
+          if [ ! -e /tmp/.X11-unix/X99 ]; then
+            echo "::error::Xvfb socket never appeared"
+            kill "$XVFB_PID" 2>/dev/null || true
+            exit 1
+          fi
+          export DISPLAY=:99
+          export LIBGL_ALWAYS_SOFTWARE=1
+          FRAMES="${{ github.event.inputs.frames || '600' }}"
+          set +e
+          godot --path . --rendering-driver opengl3 --audio-driver Dummy \
+            --resolution "$RECORD_RES" --write-movie recordings/raw.avi \
+            --fixed-fps "$RECORD_FIXED_FPS" --quit-after "$FRAMES" \
+            "$RECORD_SCENE" $RECORD_EXTRA_ARGS
+          EXIT_CODE=$?
+          set -e
+          kill "$XVFB_PID" 2>/dev/null || true
+          # Note: this step deliberately does NOT pass --headless. --headless
+          # forces the dummy display driver, which is the software-render
+          # trap that produced 1-FPS clips before; Movie Maker needs the real
+          # (Xvfb-backed) opengl3 driver to render frames to composite into
+          # the movie.
+          test -s recordings/raw.avi || { echo "::error::raw.avi missing or empty"; exit 1; }
+          exit $EXIT_CODE
+
+      - name: Convert AVI -> compact MP4 (H.264/yuv420p/faststart, <=720px)
+        run: |
+          set -euo pipefail
+          ffmpeg -y -i recordings/raw.avi -vf "scale='min(720,iw)':'-2'" \
+            -c:v libx264 -pix_fmt yuv420p -movflags +faststart recordings/gameplay.mp4
+          rm -f recordings/raw.avi
+          ls -la recordings/
+
+      - name: Verify video (measure fps/frames/motion, do not just assert)
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, json, os, shutil, subprocess
+
+          video = "recordings/gameplay.mp4"
+          probe = subprocess.run(
+              ["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames",
+               "-show_entries", "stream=nb_read_frames,r_frame_rate,duration",
+               "-of", "json", video],
+              capture_output=True, text=True, check=True,
+          )
+          stream = json.loads(probe.stdout)["streams"][0]
+          frames = int(stream["nb_read_frames"])
+          num, den = stream["r_frame_rate"].split("/")
+          target_fps = float(num) / float(den)
+          duration = float(stream["duration"])
+          real_fps = frames / duration if duration else 0.0
+
+          outdir = "recordings/_verify_frames"
+          if os.path.exists(outdir):
+              shutil.rmtree(outdir)
+          os.makedirs(outdir)
+          subprocess.run(
+              ["ffmpeg", "-y", "-i", video, "-vf", "fps=2",
+               os.path.join(outdir, "f_%04d.png")],
+              check=True, capture_output=True,
+          )
+
+          import numpy as np
+          from PIL import Image
+
+          files = sorted(glob.glob(os.path.join(outdir, "f_*.png")))
+          diffs = []
+          prev = None
+          for f in files:
+              img = np.asarray(Image.open(f).convert("RGB"), dtype=np.int16)
+              if prev is not None:
+                  diffs.append(float(np.abs(img - prev).mean()))
+              prev = img
+          motion_confirmed = bool(diffs) and all(d > 0.2 for d in diffs)
+          mean_diff = sum(diffs) / len(diffs) if diffs else 0.0
+
+          verdict = "PASS" if (real_fps >= 10 and motion_confirmed) else "FAIL"
+
+          summary = (
+              f"## Voxel gameplay video verdict: {verdict}\n"
+              f"- frames={frames} duration={duration:.3f}s "
+              f"real_fps={real_fps:.2f} (target {target_fps:.0f})\n"
+              f"- motion sample pairs={len(diffs)} "
+              f"mean_abs_pixel_diff={mean_diff:.3f} "
+              f"all_pairs_show_motion={motion_confirmed}\n"
+          )
+          print(summary)
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if step_summary:
+              with open(step_summary, "a") as fh:
+                  fh.write(summary)
+          with open("recordings/verdict.txt", "w") as fh:
+              fh.write(verdict + "\n" + summary)
+          shutil.rmtree(outdir, ignore_errors=True)
+          # Deliberately exit 0 on FAIL: the video still gets uploaded for
+          # inspection, clearly labeled, rather than silently claimed smooth.
+          PY
+
+      - name: Upload video artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxel-gameplay-video
+          path: |
+            recordings/gameplay.mp4
+            recordings/verdict.txt
+            import.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  export-build:
+    name: Export build (best-effort; needs export_presets.cfg)
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/barichello/godot-ci:4.3
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for export_presets.cfg
+        id: presets
+        run: |
+          if [ -f export_presets.cfg ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No export_presets.cfg in this repo yet -- skipping export. Add a Web (and optionally Android) export preset in the Godot editor once, commit export_presets.cfg, and this job will start producing real builds automatically."
+          fi
+
+      - name: Import project (asset import cache warm-up)
+        if: steps.presets.outputs.present == 'true'
+        run: godot --headless --path . --editor --quit-after 200
+
+      - name: Export Web build
+        if: steps.presets.outputs.present == 'true' && env.WEB_EXPORT_PRESET != ''
+        run: |
+          set -euo pipefail
+          mkdir -p build/web
+          godot --headless --path . --export-release "$WEB_EXPORT_PRESET" build/web/index.html
+
+      - name: Export Android build (best-effort; needs keystore secret)
+        if: steps.presets.outputs.present == 'true' && env.ANDROID_EXPORT_PRESET != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "::notice::ANDROID_KEYSTORE_BASE64 secret not configured -- skipping Android export (export_presets.cfg's Android preset needs a real signing keystore, which is correctly not committed to the repo)."
+            exit 0
+          fi
+          mkdir -p build/android
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > build/release.keystore
+          godot --headless --path . --export-release "$ANDROID_EXPORT_PRESET" build/android/app.apk
+
+      - name: Upload build artifact
+        if: steps.presets.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxel-build
+          path: build/
+          if-no-files-found: warn
+          retention-days: 30
+
+  deliver:
+    name: Deliver video (Telegram, best-effort)
+    needs: [record-video, export-build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download video artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: voxel-gameplay-video
+          path: recordings
+
+      - name: Push to games Telegram bot (skipped unless secrets are configured)
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_GAMES }}
+          CHAT_ID: ${{ secrets.OWNER_TELEGRAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BOT_TOKEN:-}" ] || [ -z "${CHAT_ID:-}" ]; then
+            echo "::notice::TELEGRAM_BOT_TOKEN_GAMES and/or OWNER_TELEGRAM_ID secrets are not configured on this repo -- skipping Telegram delivery. The video is still available as a workflow artifact above."
+            exit 0
+          fi
+          if [ ! -s recordings/gameplay.mp4 ]; then
+            echo "::warning::No gameplay.mp4 to deliver (recording likely failed upstream)."
+            exit 0
+          fi
+          SIZE=$(stat -c%s recordings/gameplay.mp4)
+          if [ "$SIZE" -gt $((48 * 1024 * 1024)) ]; then
+            echo "::warning::gameplay.mp4 is ${SIZE} bytes, over the ~48MB budget for Telegram sendVideo -- skipping push, artifact upload still covers delivery."
+            exit 0
+          fi
+          CAPTION="VoxelWorldCraft automated gameplay render"
+          if [ -f recordings/verdict.txt ]; then
+            CAPTION="$CAPTION - $(head -n1 recordings/verdict.txt)"
+          fi
+          curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
+            -F chat_id="${CHAT_ID}" \
+            -F caption="${CAPTION}" \
+            -F video=@recordings/gameplay.mp4
