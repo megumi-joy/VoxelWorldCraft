@@ -7,8 +7,16 @@ class_name TrainTrackBuilder
 ## (scripts/world/train_track_generator.gd in that repo): a Path3D holds a
 ## Curve3D route; CSGPolygon3D nodes in MODE_PATH extrude a cross-section
 ## along that curve to build the rails (and, here, a ballast bed); a
-## PathFollow3D with ROTATION_ORIENTED carries the locomotive. Sleepers/ties
-## and the locomotive mesh are new for this voxel-terrain first cut.
+## PathFollow3D carries the locomotive. Sleepers/ties and the locomotive mesh
+## are new for this voxel-terrain first cut.
+##
+## Both the rails (CSGPolygon3D.path_rotation) and the locomotive
+## (PathFollow3D.rotation_mode) are deliberately pinned to yaw-only rotation
+## (PATH_ROTATION_PATH / ROTATION_Y) rather than each following its own
+## independent full-3D orientation frame (the PATH_FOLLOW / ROTATION_ORIENTED
+## defaults) -- on this terrain-following, sloped loop those two frames don't
+## necessarily agree, which is what made the locomotive appear to float
+## above the rails before this was pinned down.
 ##
 ## Runtime-only (deliberately NOT @tool): it builds procedurally in
 ## _ready(), the same pattern VoxelWorld/Chunk already use for terrain, so
@@ -28,10 +36,14 @@ class_name TrainTrackBuilder
 @export var voxel_world_path: NodePath = NodePath("../VoxelWorld")
 
 ## When true, this builder also drops in and activates its own Camera3D
-## framing the loop -- used by the standalone recording scene (TrainDemo.tscn)
-## which has no Player. Leave false when wired into World.tscn so it never
+## framing the loop -- used by the standalone recording scenes (TrainDemo*.tscn)
+## which have no Player. Leave false when wired into World.tscn so it never
 ## fights the Player's first-person camera.
 @export var auto_frame_camera: bool = false
+
+## When auto_frame_camera is true, choose an elevated 3/4 view (false) or a
+## straight-down overhead view (true).
+@export var top_down_camera: bool = false
 
 @export var track_center: Vector2 = Vector2.ZERO
 @export var radius_x: float = 20.0
@@ -42,6 +54,8 @@ class_name TrainTrackBuilder
 @export var sleeper_spacing: float = 2.2  # metres between ties
 @export var train_speed: float = 10.0     # m/s along the curve
 @export var chunk_margin_blocks: int = 8  # extra blocks force-loaded beyond the loop's bbox
+
+const RAIL_HEAD_HEIGHT := 0.22  # rail cross-section height above the curve (see _add_rail)
 
 var _voxel_world: VoxelWorld
 var _built := false
@@ -162,6 +176,13 @@ func _build_rails(path: Path3D) -> void:
 	bed.path_interval_type = CSGPolygon3D.PATH_INTERVAL_SUBDIVIDE
 	bed.path_interval = 2.0
 	bed.path_local = false
+	# PATH_ROTATION_PATH (not the PATH_FOLLOW default): rotate to follow the
+	# curve's yaw only, never bank/tilt with elevation changes. Keeping the
+	# ballast/rails level (local up == world up) is what lets the
+	# locomotive's own vertical offset (see _build_locomotive, also pinned to
+	# world up via ROTATION_Y) land exactly on the rail head instead of
+	# drifting apart on the sloped stretches of this terrain-following loop.
+	bed.path_rotation = CSGPolygon3D.PATH_ROTATION_PATH
 	bed.polygon = PackedVector2Array([
 		Vector2(-rail_gauge - 0.9, -0.25),
 		Vector2(-rail_gauge - 0.4,  0.0),
@@ -184,11 +205,12 @@ func _add_rail(path: Path3D, offset_x: float, r_name: String) -> void:
 	poly.path_interval_type = CSGPolygon3D.PATH_INTERVAL_SUBDIVIDE
 	poly.path_interval = 2.0
 	poly.path_local = false
+	poly.path_rotation = CSGPolygon3D.PATH_ROTATION_PATH  # see _build_rails comment
 	poly.polygon = PackedVector2Array([
 		Vector2(offset_x - 0.08, 0.0),
 		Vector2(offset_x + 0.08, 0.0),
-		Vector2(offset_x + 0.08, 0.22),
-		Vector2(offset_x - 0.08, 0.22),
+		Vector2(offset_x + 0.08, RAIL_HEAD_HEIGHT),
+		Vector2(offset_x - 0.08, RAIL_HEAD_HEIGHT),
 	])
 	var rail_mat := StandardMaterial3D.new()
 	rail_mat.albedo_color = Color(0.55, 0.55, 0.6)
@@ -243,7 +265,11 @@ func _spawn_train(path: Path3D) -> PathFollow3D:
 	var pf := PathFollow3D.new()
 	pf.name = "TrainHead"
 	pf.loop = true
-	pf.rotation_mode = PathFollow3D.ROTATION_ORIENTED
+	# ROTATION_Y (yaw only, not ROTATION_ORIENTED): keeps the loco's local up
+	# pinned to world up so it never banks/tilts on this terrain-following
+	# loop's slopes -- see _build_rails for the matching rail-side fix. Yaw
+	# still turns the loco to face the direction of travel around the loop.
+	pf.rotation_mode = PathFollow3D.ROTATION_Y
 	path.add_child(pf)
 
 	var mover := preload("res://Scripts/World/TrainMover.gd").new()
@@ -259,7 +285,13 @@ func _build_locomotive(parent: Node3D) -> void:
 	loco.name = "Locomotive"
 	parent.add_child(loco)
 
+	# Wheel bottom must land exactly on the rail HEAD (top of the rail
+	# cross-section, RAIL_HEAD_HEIGHT above the curve/PathFollow3D's own Y),
+	# not on the curve itself -- the curve Y is the rail BASE, and the rails
+	# extrude RAIL_HEAD_HEIGHT above that. Missing this offset is what made
+	# the loco visibly float above the rails.
 	var wheel_r := 0.45
+	var wheel_center_y := RAIL_HEAD_HEIGHT + wheel_r
 	var wheel_mesh := CylinderMesh.new()
 	wheel_mesh.top_radius = wheel_r
 	wheel_mesh.bottom_radius = wheel_r
@@ -272,7 +304,7 @@ func _build_locomotive(parent: Node3D) -> void:
 			wheel.mesh = wheel_mesh
 			wheel.material_override = wheel_mat
 			wheel.rotation_degrees = Vector3(0, 0, 90)
-			wheel.position = Vector3(side * (rail_gauge - 0.15), wheel_r, lengthwise)
+			wheel.position = Vector3(side * (rail_gauge - 0.15), wheel_center_y, lengthwise)
 			loco.add_child(wheel)
 
 	# Boxy body -- bottom rests on top of the wheels.
@@ -284,7 +316,7 @@ func _build_locomotive(parent: Node3D) -> void:
 	var body_mat := StandardMaterial3D.new()
 	body_mat.albedo_color = Color(0.55, 0.1, 0.08)
 	body.material_override = body_mat
-	body.position = Vector3(0, wheel_r * 2.0 + body_size.y * 0.5, 0)
+	body.position = Vector3(0, wheel_center_y + wheel_r + body_size.y * 0.5, 0)
 	loco.add_child(body)
 	var body_top: float = body.position.y + body_size.y * 0.5
 
@@ -326,6 +358,13 @@ func _add_demo_camera(path: Path3D) -> void:
 	var cam := Camera3D.new()
 	cam.name = "DemoCamera"
 	add_child(cam)
-	cam.global_position = center + Vector3(span * 0.42, span * 0.3 + 6.0, span * 0.42)
-	cam.look_at(center, Vector3.UP)
+	if top_down_camera:
+		# Straight down: view direction is parallel to Vector3.UP, so UP
+		# can't be used as the look_at reference (degenerate/parallel) --
+		# use world FORWARD (-Z) instead so "up" on screen is world -Z.
+		cam.global_position = center + Vector3(0, span * 1.1 + 18.0, 0)
+		cam.look_at(center, Vector3.FORWARD)
+	else:
+		cam.global_position = center + Vector3(span * 0.55, span * 0.4 + 9.0, span * 0.55)
+		cam.look_at(center, Vector3.UP)
 	cam.current = true
