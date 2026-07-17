@@ -206,6 +206,13 @@ func setup_nodes():
 			hotbar.name = "HotbarUI"
 			hud_layer.add_child(hotbar)
 
+		var settings_res = load("res://Scenes/SettingsPanel.tscn")
+		if settings_res:
+			var settings_panel = settings_res.instantiate()
+			settings_panel.name = "SettingsPanel"
+			settings_panel.visible = false
+			hud_layer.add_child(settings_panel)
+
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		# Light smoothing: blend each raw mouse delta with the previous
