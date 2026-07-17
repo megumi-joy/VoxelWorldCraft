@@ -146,6 +146,9 @@ func generate_data():
 						if r < 0.05: set_block(surface_pos, 44) # Red Flower
 						elif r < 0.10: set_block(surface_pos, 45) # Yellow Flower
 						else: set_block(surface_pos, 46) # Tall Grass
+					elif r < 0.17: set_block(surface_pos, 55) # Berry Bush (food source; was id 52, reassigned -- see ItemDatabase.gd)
+					elif r < 0.185: set_block(surface_pos, 53) # Blue Flower (decorative)
+					elif r < 0.20: set_block(surface_pos, 54) # Pink Flower (decorative)
 				"Plains":
 					# Open grassland: light flora, almost no trees (this is
 					# the main visual/feature difference from Forest even
@@ -290,7 +293,10 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 45: atlas_idx = 1; atlas_row = 4 # Yellow Flower
 	elif type == 46: atlas_idx = 2; atlas_row = 4 # Tall Grass
 	elif type == 47: atlas_idx = 3; atlas_row = 4 # Cactus
-	
+	elif type == 55: atlas_idx = 4; atlas_row = 4 # Berry Bush (food source; was id 52, reassigned -- see ItemDatabase.gd)
+	elif type == 53: atlas_idx = 5; atlas_row = 4 # Blue Flower
+	elif type == 54: atlas_idx = 6; atlas_row = 4 # Pink Flower
+
 	var u_start = atlas_idx * UV_SIZE
 	var v_start = atlas_row * UV_SIZE
 	

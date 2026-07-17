@@ -161,6 +161,45 @@ func _ready():
 	if items.has(60): items[60].armor_value = 5.0
 	if items.has(61): items[61].armor_value = 20.0
 
+	# Flowers & Food (decorative plants + edible harvest, additive block)
+	# ID 55: Berry Bush (world decoration, harvestable for Berries)
+	# NOTE: originally ID 52 in feat/flowers-food, but feat/biomes
+	# independently claimed 52 for Ice (Tundra biome terrain block).
+	# Reassigned to the next free id during speedrun integration to resolve
+	# the collision -- Ice keeps 52 since it's referenced by more call sites
+	# (get_biome/generate_data terrain gen) than the Berry Bush's decorative
+	# scatter.
+	var berry_bush = item_data_type.new()
+	berry_bush.id = 55
+	berry_bush.name = "Berry Bush"
+	berry_bush.type = item_data_type.ItemType.BLOCK
+	berry_bush.block_id = 55
+	items[55] = berry_bush
+
+	# ID 53: Blue Flower (decorative)
+	var blue_flower = item_data_type.new()
+	blue_flower.id = 53
+	blue_flower.name = "Flower (Blue)"
+	blue_flower.type = item_data_type.ItemType.BLOCK
+	blue_flower.block_id = 53
+	items[53] = blue_flower
+
+	# ID 54: Pink Flower (decorative)
+	var pink_flower = item_data_type.new()
+	pink_flower.id = 54
+	pink_flower.name = "Flower (Pink)"
+	pink_flower.type = item_data_type.ItemType.BLOCK
+	pink_flower.block_id = 54
+	items[54] = pink_flower
+
+	# ID 70: Berries (edible; harvested by breaking a Berry Bush)
+	var berries = item_data_type.new()
+	berries.id = 70
+	berries.name = "Berries"
+	berries.type = item_data_type.ItemType.CONSUMABLE
+	berries.nutrition_value = 12.0
+	items[70] = berries
+
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements
 	var elements = ["Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium", "Aluminum", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium", "Indium", "Tin", "Antimony", "Tellurium", "Iodine", "Xenon", "Cesium", "Barium", "Lanthanum", "Cerium", "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium", "Iridium", "Platinum", "Gold", "Mercury", "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon", "Francium", "Radium", "Actinium", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium", "Roentgenium", "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson"]
