@@ -1,0 +1,111 @@
+[gd_scene load_steps=4 format=3 uid="uid://hud_overlay"]
+
+[ext_resource type="Script" path="res://Scripts/UI/HUD.gd" id="1_hud"]
+[ext_resource type="Script" path="res://Scripts/UI/HudStatIcon.gd" id="2_icon"]
+[ext_resource type="Script" path="res://Scripts/UI/HudCrosshair.gd" id="3_cross"]
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="StatsPanel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 300.0
+offset_bottom = 140.0
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="StatsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="VBox" type="VBoxContainer" parent="StatsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HealthRow" type="HBoxContainer" parent="StatsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HealthIcon" type="Control" parent="StatsPanel/Margin/VBox/HealthRow"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("2_icon")
+icon_type = "heart"
+
+[node name="HealthBar" type="ProgressBar" parent="StatsPanel/Margin/VBox/HealthRow"]
+custom_minimum_size = Vector2(210, 34)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="HungerRow" type="HBoxContainer" parent="StatsPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HungerIcon" type="Control" parent="StatsPanel/Margin/VBox/HungerRow"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("2_icon")
+icon_type = "food"
+
+[node name="HungerBar" type="ProgressBar" parent="StatsPanel/Margin/VBox/HungerRow"]
+custom_minimum_size = Vector2(210, 34)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="AIButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 76.0
+grow_horizontal = 0
+text = "MANUAL"
+
+[node name="MessageLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 24.0
+offset_bottom = 74.0
+grow_horizontal = 2
+mouse_filter = 2
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Crosshair" type="Control" parent="."]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -14.0
+offset_top = -14.0
+offset_right = 14.0
+offset_bottom = 14.0
+mouse_filter = 2
+script = ExtResource("3_cross")

@@ -48,7 +48,10 @@ func _ready():
 	# We need to align with ItemDatabase. Let's assume ItemDB IDs:
 	# 40=Water, 41=Lava, 42=Sand, 43=Snow, 44=FlowerRed, 45=FlowerYel, 46=Grass, 47=Cactus, 48=Birch, 49=Pine, 50=BirchLeaves, 51=PineLeaves
 	# Leaves (Generic Oak)
-	generate_texture(image, 2, 2, Color(0.1, 0.4, 0.1), 0.4) 
+	generate_texture(image, 2, 2, Color(0.1, 0.4, 0.1), 0.4)
+	# Ice (ID 52) - frozen patches inside the Tundra biome
+	generate_texture(image, 3, 2, Color(0.65, 0.85, 0.95), 0.15)
+	add_lines(image, 3, 2, Color(0.8, 0.93, 1.0), false) # Vertical crack highlights
 	
 	# --- Row 3: Fluids & More Wood ---
 	# Water (ID 40)
@@ -74,7 +77,17 @@ func _ready():
 	# Cactus (ID 47)
 	generate_texture(image, 3, 4, Color(0.2, 0.6, 0.2), 0.1)
 	add_lines(image, 3, 4, Color(0.1, 0.5, 0.1), false) # Veritcal stripes
-	
+
+	# Berry Bush (ID 55) - opaque leafy bush with red berries (food source)
+	generate_texture(image, 4, 4, Color(0.15, 0.45, 0.15), 0.15)
+	add_spots(image, 4, 4, Color(0.8, 0.05, 0.1), 14)
+	# Blue Flower (ID 53)
+	generate_texture(image, 5, 4, Color(0,0,0,0), 0)
+	add_flower(image, 5, 4, Color(0.2, 0.4, 0.95))
+	# Pink Flower (ID 54)
+	generate_texture(image, 6, 4, Color(0,0,0,0), 0)
+	add_flower(image, 6, 4, Color(0.95, 0.4, 0.75))
+
 	# --- Row 5: Elements/Minerals (Generic bases for now) ---
 	# We have 100+ elements.
 	# We can't fit them all unique. We'll use a generic "Mineral" texture and tint it in shader?

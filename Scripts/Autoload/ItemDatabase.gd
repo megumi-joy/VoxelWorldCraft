@@ -123,13 +123,32 @@ func _ready():
 	bread.nutrition_value = 30.0
 	items[22] = bread
 	
+	# ID 23: Sticks (Planks -> Sticks, used as a crafting ingredient)
+	var sticks = item_data_type.new()
+	sticks.id = 23
+	sticks.name = "Sticks"
+	sticks.type = item_data_type.ItemType.RESOURCE
+	items[23] = sticks
+
 	# ID 30-33: Wooden Tools
+	# NOTE: this dict used to be built and then never actually turned into
+	# ItemData entries below -- items 30-33 didn't exist in `items` at all,
+	# so ItemDatabase.get_item(30..33) always returned null and any tool
+	# logic keyed off it (Player.gd break-speed, Hoe check) silently no-opped.
 	var tools_data_local = {
-		30: ["Wooden Pickaxe", 2.0],
-		31: ["Wooden Shovel", 2.0],
-		32: ["Wooden Axe", 2.0],
-		33: ["Wooden Hoe", 1.0]
+		30: ["Wooden Pickaxe", "pickaxe"],
+		31: ["Wooden Shovel", "shovel"],
+		32: ["Wooden Axe", "axe"],
+		33: ["Wooden Hoe", "hoe"]
 	}
+	for tid in tools_data_local:
+		var tool_item = item_data_type.new()
+		tool_item.id = tid
+		tool_item.name = tools_data_local[tid][0]
+		tool_item.type = item_data_type.ItemType.TOOL
+		tool_item.tool_type = tools_data_local[tid][1]
+		tool_item.stackable = false
+		items[tid] = tool_item
 	# Nature & Fluids
 	var nature_items = {
 		40: ["Water", item_data_type.ItemType.BLOCK, 40],
@@ -144,6 +163,7 @@ func _ready():
 		49: ["Pine Wood", item_data_type.ItemType.BLOCK, 49],
 		50: ["Birch Leaves", item_data_type.ItemType.BLOCK, 50],
 		51: ["Pine Leaves", item_data_type.ItemType.BLOCK, 51],
+		52: ["Ice", item_data_type.ItemType.BLOCK, 52],
 		60: ["Leather Tunic", item_data_type.ItemType.RESOURCE, 0], # Armor Type?
 		61: ["Iron Chestplate", item_data_type.ItemType.RESOURCE, 0]
 	}
@@ -159,6 +179,45 @@ func _ready():
 	# Set Armor stats
 	if items.has(60): items[60].armor_value = 5.0
 	if items.has(61): items[61].armor_value = 20.0
+
+	# Flowers & Food (decorative plants + edible harvest, additive block)
+	# ID 55: Berry Bush (world decoration, harvestable for Berries)
+	# NOTE: originally ID 52 in feat/flowers-food, but feat/biomes
+	# independently claimed 52 for Ice (Tundra biome terrain block).
+	# Reassigned to the next free id during speedrun integration to resolve
+	# the collision -- Ice keeps 52 since it's referenced by more call sites
+	# (get_biome/generate_data terrain gen) than the Berry Bush's decorative
+	# scatter.
+	var berry_bush = item_data_type.new()
+	berry_bush.id = 55
+	berry_bush.name = "Berry Bush"
+	berry_bush.type = item_data_type.ItemType.BLOCK
+	berry_bush.block_id = 55
+	items[55] = berry_bush
+
+	# ID 53: Blue Flower (decorative)
+	var blue_flower = item_data_type.new()
+	blue_flower.id = 53
+	blue_flower.name = "Flower (Blue)"
+	blue_flower.type = item_data_type.ItemType.BLOCK
+	blue_flower.block_id = 53
+	items[53] = blue_flower
+
+	# ID 54: Pink Flower (decorative)
+	var pink_flower = item_data_type.new()
+	pink_flower.id = 54
+	pink_flower.name = "Flower (Pink)"
+	pink_flower.type = item_data_type.ItemType.BLOCK
+	pink_flower.block_id = 54
+	items[54] = pink_flower
+
+	# ID 70: Berries (edible; harvested by breaking a Berry Bush)
+	var berries = item_data_type.new()
+	berries.id = 70
+	berries.name = "Berries"
+	berries.type = item_data_type.ItemType.CONSUMABLE
+	berries.nutrition_value = 12.0
+	items[70] = berries
 
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements
@@ -179,3 +238,31 @@ func get_item(id: int):
 	if items.has(id):
 		return items[id]
 	return null
+
+# Voxel block_type -> mining category ("pickaxe" / "axe" / "shovel").
+# Used by Player.gd to decide block-break speed for the currently held tool.
+# Blocks not listed here (flowers, leaves, water, ores/blocks not covered
+# below, ...) are left at the default break speed regardless of held item.
+# A couple of ids are listed twice on purpose: world terrain generation
+# (Chunk.gd) writes raw block ids 42/43 for Sand/Snow directly, while
+# block-placement from the Sand/Snow *items* goes through their declared
+# block_id (16/15) -- both need to resolve to "shovel".
+const BLOCK_TOOL_CATEGORY = {
+	3: "pickaxe",  # Stone
+	5: "pickaxe",  # Coal Ore
+	6: "pickaxe",  # Iron Ore
+	4: "axe",      # Wood (Oak Log)
+	13: "axe",     # Planks
+	48: "axe",     # Birch Wood
+	49: "axe",     # Pine Wood
+	1: "shovel",   # Dirt
+	2: "shovel",   # Grass
+	42: "shovel",  # Sand (as generated in terrain)
+	16: "shovel",  # Sand (item.block_id)
+	43: "shovel",  # Snow (as generated in terrain)
+	15: "shovel",  # Snow (item.block_id)
+	14: "shovel",  # Farmland
+}
+
+func get_block_category(block_type: int) -> String:
+	return BLOCK_TOOL_CATEGORY.get(block_type, "")
