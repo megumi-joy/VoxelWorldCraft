@@ -1,11 +1,64 @@
 extends CharacterBody3D
 
-const SPEED = 5.0
-const JUMP_VELOCITY = 4.5
-const SENSITIVITY = 0.003
+# --- Movement feel tuning --------------------------------------------------
+# Exported so game-feel can be iterated on from the Inspector. Defaults aim
+# for a snappy, weighty first-person feel (Minecraft-like), not floaty or
+# robotic-instant.
+
+@export_group("Speed")
+@export var walk_speed: float = 5.0
+@export var sprint_speed: float = 8.0
+
+@export_group("Acceleration / Friction")
+# Ground accel/friction: responsive but not instant (a hair of slide when
+# stopping). Air accel/friction are lower -- reduced air control, momentum
+# carries like a real jump arc instead of steering on a dime mid-air.
+@export var ground_acceleration: float = 22.0
+@export var ground_friction: float = 18.0
+@export var air_acceleration: float = 6.0
+@export var air_friction: float = 2.0
+
+@export_group("Jump")
+@export var jump_velocity: float = 4.5
+# Asymmetric gravity: floaty-ish on the way up, snappy on the way down.
+# This one lever does more for jump "feel" than the jump height itself --
+# symmetric gravity at this same apex reads as mushy/floaty.
+@export var rise_gravity_scale: float = 0.85
+@export var fall_gravity_scale: float = 1.6
+# Coyote time: jump still allowed briefly after walking off a ledge.
+@export var coyote_time: float = 0.1
+# Jump buffering: a jump press shortly before landing still fires on landing.
+@export var jump_buffer_time: float = 0.12
+
+@export_group("Sprint FOV Kick")
+@export var sprint_fov_kick_deg: float = 8.0
+@export var fov_lerp_speed: float = 8.0
+
+@export_group("Head Bob")
+@export var head_bob_enabled: bool = true
+@export var head_bob_amplitude: float = 0.045
+@export var head_bob_side_amplitude: float = 0.02
+# Radians of bob-cycle progressed per second per 1 unit/s of horizontal speed.
+@export var head_bob_frequency: float = 2.2
+@export var head_bob_smoothing: float = 10.0
+
+@export_group("Look")
+# 0 = raw/instant mouse look, closer to 1 = smoother but laggier. Kept low so
+# it only shaves off jitter rather than adding perceptible input delay.
+@export_range(0.0, 0.95) var look_smoothing: float = 0.3
+@export var mouse_sensitivity: float = 0.003
 
 # Get the gravity from the project settings to be synced with RigidBody nodes.
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
+
+# Movement-feel runtime state (see _ready for init, _physics_process/helpers
+# below for use).
+var _coyote_timer: float = 0.0
+var _jump_buffer_timer: float = 0.0
+var _bob_time: float = 0.0
+var _camera_base_local_pos: Vector3 = Vector3.ZERO
+var _base_fov: float = 75.0
+var _smoothed_look_delta: Vector2 = Vector2.ZERO
 
 @onready var head = $Head
 @onready var camera = $Head/Camera3D
@@ -44,12 +97,21 @@ func _ready():
 	add_input_mapping("move_left", KEY_A)
 	add_input_mapping("move_right", KEY_D)
 	add_input_mapping("jump", KEY_SPACE)
+	add_input_mapping("sprint", KEY_SHIFT)
 	add_input_mapping("inventory", KEY_E)
 
 	# Ensure nodes exist
 	if not head:
 		setup_nodes()
-		
+
+	# Movement-feel init: capture the camera's authored local position/FOV as
+	# the "neutral" values head-bob and the sprint FOV kick animate around and
+	# return to (works whether Head/Camera3D came from the scene or the
+	# setup_nodes() fallback above).
+	if camera:
+		_camera_base_local_pos = camera.position
+		_base_fov = camera.fov
+
 	# Connect Hotbar
 	if hotbar_ui:
 		hotbar_ui.on_slot_selected.connect(on_hotbar_select)
@@ -146,8 +208,12 @@ func setup_nodes():
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
-		head.rotate_y(-event.relative.x * SENSITIVITY)
-		camera.rotate_x(-event.relative.y * SENSITIVITY)
+		# Light smoothing: blend each raw mouse delta with the previous
+		# smoothed delta so small jitter doesn't translate 1:1 into camera
+		# shake, while staying responsive (low smoothing weight by default).
+		_smoothed_look_delta = _smoothed_look_delta.lerp(event.relative, 1.0 - look_smoothing)
+		head.rotate_y(-_smoothed_look_delta.x * mouse_sensitivity)
+		camera.rotate_x(-_smoothed_look_delta.y * mouse_sensitivity)
 		camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-90), deg_to_rad(90))
 
 	if event.is_action_pressed("ui_cancel"): # Escape
@@ -162,31 +228,51 @@ var ai_target: Node3D = null
 var ai_timer: float = 0.0
 
 func _physics_process(delta):
-	# Add the gravity.
+	# --- Jump timers: coyote time (grace period to still jump shortly after
+	# walking off a ledge) and jump buffering (a jump press shortly before
+	# landing still fires the instant we touch down). Tracked every frame
+	# regardless of AI/manual so both feel the same. ---
+	if is_on_floor():
+		_coyote_timer = coyote_time
+	else:
+		_coyote_timer -= delta
+	_jump_buffer_timer -= delta
+
+	# Add the gravity -- asymmetric: floaty-ish rise, snappy fall (see
+	# rise_gravity_scale/fall_gravity_scale above for why).
 	if not is_on_floor():
-		velocity.y -= gravity * delta
+		var gravity_scale = rise_gravity_scale if velocity.y > 0.0 else fall_gravity_scale
+		velocity.y -= gravity * gravity_scale * delta
+
+	var is_sprinting := false
 
 	if ai_enabled:
 		# AI autoplay: wanders forward, jumps occasionally, and turns on its own.
+		# (Unchanged -- AI drives velocity directly rather than through the
+		# accel/friction model below.)
 		process_ai(delta)
 	else:
-		# Handle Jump.
-		if Input.is_action_just_pressed("jump") and is_on_floor():
-			velocity.y = JUMP_VELOCITY
+		if Input.is_action_just_pressed("jump"):
+			_jump_buffer_timer = jump_buffer_time
 
 		# Get the input direction and turn it into a world-space move direction
-		# relative to where the player is looking (Head yaw), then actually
-		# apply it to the body's velocity so move_and_slide() below can move it.
-		# (Previously input_dir was computed here and then discarded -- velocity.x/z
-		# were never assigned, so WASD had no effect on the CharacterBody3D.)
+		# relative to where the player is looking (Head yaw), then run it
+		# through acceleration/friction toward a target speed instead of
+		# snapping straight to it -- this is what makes movement feel weighty
+		# rather than instant/robotic.
 		var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
-		if input_dir != Vector2.ZERO:
-			var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-			velocity.x = direction.x * SPEED
-			velocity.z = direction.z * SPEED
-		else:
-			velocity.x = move_toward(velocity.x, 0, SPEED)
-			velocity.z = move_toward(velocity.z, 0, SPEED)
+		is_sprinting = input_dir != Vector2.ZERO and Input.is_action_pressed("sprint")
+		_apply_horizontal_movement(delta, input_dir, is_sprinting)
+
+	# Consume a buffered jump the instant we have floor/coyote grace,
+	# regardless of which branch above requested it.
+	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
+		velocity.y = jump_velocity
+		_jump_buffer_timer = 0.0
+		_coyote_timer = 0.0
+
+	_apply_head_bob(delta)
+	_apply_sprint_fov(delta, is_sprinting)
 
 	move_and_slide()
 
@@ -199,6 +285,50 @@ func _physics_process(delta):
 	# an AI driver) drive it in AI mode -- previously gated to manual-only,
 	# which meant a bot/AI could never trigger the mocked tool interaction.
 	manual_interaction_check()
+
+func _apply_horizontal_movement(delta: float, input_dir: Vector2, is_sprinting: bool) -> void:
+	var horizontal = Vector2(velocity.x, velocity.z)
+	var target = Vector2.ZERO
+
+	if input_dir != Vector2.ZERO:
+		var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+		var target_speed = sprint_speed if is_sprinting else walk_speed
+		target = Vector2(direction.x, direction.z) * target_speed
+
+	var grounded = is_on_floor()
+	var accel: float
+	if input_dir != Vector2.ZERO:
+		accel = ground_acceleration if grounded else air_acceleration
+	else:
+		accel = ground_friction if grounded else air_friction
+
+	horizontal = horizontal.move_toward(target, accel * delta)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.y
+
+func _apply_head_bob(delta: float) -> void:
+	if not head_bob_enabled or not camera:
+		return
+
+	var horizontal_speed = Vector2(velocity.x, velocity.z).length()
+	var target_offset = Vector3.ZERO
+
+	if is_on_floor() and horizontal_speed > 0.15:
+		_bob_time += delta * horizontal_speed * head_bob_frequency
+		var strength = clamp(horizontal_speed / sprint_speed, 0.0, 1.3)
+		target_offset.y = sin(_bob_time) * head_bob_amplitude * strength
+		target_offset.x = cos(_bob_time * 0.5) * head_bob_side_amplitude * strength
+	# else: leave _bob_time as-is and let the offset lerp back toward zero
+	# below, so stopping fades the bob out smoothly instead of snapping flat.
+
+	var weight = clamp(delta * head_bob_smoothing, 0.0, 1.0)
+	camera.position = camera.position.lerp(_camera_base_local_pos + target_offset, weight)
+
+func _apply_sprint_fov(delta: float, is_sprinting: bool) -> void:
+	if not camera:
+		return
+	var target_fov = _base_fov + (sprint_fov_kick_deg if is_sprinting else 0.0)
+	camera.fov = lerp(camera.fov, target_fov, clamp(delta * fov_lerp_speed, 0.0, 1.0))
 
 # Interaction override for Bot
 var mock_left_click: bool = false
@@ -340,7 +470,7 @@ func process_ai(delta):
 	velocity.z = direction.z * 2.0
 	
 	if is_on_floor() and randf() < 0.01:
-		velocity.y = JUMP_VELOCITY
+		velocity.y = jump_velocity
 	
 	# Rotate head slowly
 	head.rotate_y(delta * 0.5)
