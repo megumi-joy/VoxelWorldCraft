@@ -39,3 +39,18 @@ func _ready():
 		hud_driver.name = "HudScaleDriver"
 		var tree2 := Engine.get_main_loop() as SceneTree
 		tree2.root.add_child(hud_driver)
+
+	# Graphics-settings verification (Scripts/Testing/GraphicsSettingsDriver.gd):
+	# see that file's header for the --graphics-settings-set /
+	# --graphics-settings-verify / --graphics-settings-shot= flags. Same
+	# "attach under the tree root" pattern as the drivers above, for the
+	# same reason.
+	var wants_gfx_driver := user_args.has("--graphics-settings-set") or user_args.has("--graphics-settings-verify")
+	for a in user_args:
+		if a.begins_with("--graphics-settings-shot="):
+			wants_gfx_driver = true
+	if wants_gfx_driver:
+		var gfx_driver = load("res://Scripts/Testing/GraphicsSettingsDriver.gd").new()
+		gfx_driver.name = "GraphicsSettingsDriver"
+		var tree3 := Engine.get_main_loop() as SceneTree
+		tree3.root.add_child(gfx_driver)

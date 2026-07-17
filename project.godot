@@ -23,6 +23,7 @@ ItemDatabase="*res://Scripts/Autoload/ItemDatabase.gd"
 SaveSystem="*res://Scripts/Autoload/SaveSystem.gd"
 AutoTester="*res://Scripts/Testing/AutoTester.gd"
 HudSettings="*res://Scripts/Autoload/HudSettings.gd"
+GraphicsSettings="*res://Scripts/Autoload/GraphicsSettings.gd"
 
 [display]
 

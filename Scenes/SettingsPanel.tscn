@@ -30,10 +30,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -230.0
-offset_top = -140.0
-offset_right = 230.0
-offset_bottom = 140.0
+offset_left = -260.0
+offset_top = -260.0
+offset_right = 260.0
+offset_bottom = 260.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
@@ -47,35 +47,58 @@ theme_override_constants/margin_bottom = 22
 
 [node name="VBox" type="VBoxContainer" parent="DimBackground/PanelBox/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 14
 
 [node name="TitleLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox"]
 layout_mode = 2
 horizontal_alignment = 1
 text = "SETTINGS"
 
-[node name="HudSizeRow" type="HBoxContainer" parent="DimBackground/PanelBox/Margin/VBox"]
+[node name="ScrollContainer" type="ScrollContainer" parent="DimBackground/PanelBox/Margin/VBox"]
+custom_minimum_size = Vector2(460, 350)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ContentVBox" type="VBoxContainer" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="HudSizeRow" type="HBoxContainer" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="HudSizeLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/HudSizeRow"]
+[node name="HudSizeLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox/HudSizeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "HUD Size"
 
-[node name="ValueLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/HudSizeRow"]
+[node name="ValueLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox/HudSizeRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(70, 0)
 horizontal_alignment = 2
 text = "100%"
 
-[node name="Slider" type="HSlider" parent="DimBackground/PanelBox/Margin/VBox"]
+[node name="Slider" type="HSlider" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
 custom_minimum_size = Vector2(380, 36)
 layout_mode = 2
 min_value = 0.5
 max_value = 2.0
 step = 0.05
 value = 1.0
+
+[node name="GraphicsSeparator" type="HSeparator" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
+layout_mode = 2
+
+[node name="GraphicsTitleLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "GRAPHICS QUALITY"
+
+[node name="GraphicsSection" type="VBoxContainer" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
 
 [node name="CloseButton" type="Button" parent="DimBackground/PanelBox/Margin/VBox"]
 custom_minimum_size = Vector2(140, 52)
