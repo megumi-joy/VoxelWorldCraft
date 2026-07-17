@@ -43,7 +43,16 @@ SCENE="${4:-}"   # optional: res://Scenes/Whatever.tscn (defaults to project's r
 shift $(( $# < 4 ? $# : 4 )) || true
 EXTRA_ARGS=("$@")  # anything after -- is passed through to the running project (OS.get_cmdline_args())
 
-Xvfb :99 -screen 0 1280x720x24 &
+# Xvfb's virtual screen must be at least as large as the requested render
+# resolution ($RES) -- an unmanaged (no window manager) X11 window CAN be
+# created larger than the root window, but it is safer and correctness-
+# proven not to rely on that; size the virtual screen to the render target
+# itself (with a floor of 1280x720 for tiny target resolutions).
+XVFB_W="${RES%x*}"
+XVFB_H="${RES#*x}"
+[ "$XVFB_W" -lt 1280 ] && XVFB_W=1280
+[ "$XVFB_H" -lt 720 ] && XVFB_H=720
+Xvfb :99 -screen 0 "${XVFB_W}x${XVFB_H}x24" &
 XVFB_PID=$!
 for _ in $(seq 1 50); do
   [ -e /tmp/.X11-unix/X99 ] && break
