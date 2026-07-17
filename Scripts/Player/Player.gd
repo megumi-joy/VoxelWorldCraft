@@ -149,11 +149,6 @@ func _unhandled_input(event):
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
-	# Simple respawn logic
-	position = Vector3(0, 100, 0)
-	stats.heal(100)
-	stats.eat(100)
-
 # AI Control
 @export var ai_enabled: bool = false # Default to Manual
 var ai_target: Node3D = null
@@ -163,27 +158,40 @@ func _physics_process(delta):
 	# Add the gravity.
 	if not is_on_floor():
 		velocity.y -= gravity * delta
-	
-	# Handle Jump.
-	if Input.is_action_just_pressed("jump") and is_on_floor() and not ai_enabled:
-		velocity.y = JUMP_VELOCITY
 
-	# Get the input direction and handle the movement/deceleration.
-	var input_dir = Vector2.ZERO
-	if not ai_enabled:
-		input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
-	
-	# Input rotation is handled in _unhandled_input, but let's ensure it's applied correctly.
-	# To fix jitter, we can also use process for looking if needed.
-	
+	if ai_enabled:
+		# AI autoplay: wanders forward, jumps occasionally, and turns on its own.
+		process_ai(delta)
+	else:
+		# Handle Jump.
+		if Input.is_action_just_pressed("jump") and is_on_floor():
+			velocity.y = JUMP_VELOCITY
+
+		# Get the input direction and turn it into a world-space move direction
+		# relative to where the player is looking (Head yaw), then actually
+		# apply it to the body's velocity so move_and_slide() below can move it.
+		# (Previously input_dir was computed here and then discarded -- velocity.x/z
+		# were never assigned, so WASD had no effect on the CharacterBody3D.)
+		var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+		if input_dir != Vector2.ZERO:
+			var direction = (head.transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+			velocity.x = direction.x * SPEED
+			velocity.z = direction.z * SPEED
+		else:
+			velocity.x = move_toward(velocity.x, 0, SPEED)
+			velocity.z = move_toward(velocity.z, 0, SPEED)
+
 	move_and_slide()
-	
+
 	# Fix jitter: If the player is on floor, stop subtle vertical movement
 	if is_on_floor() and velocity.y < 0:
 		velocity.y = 0
-	
-	if not ai_enabled:
-		manual_interaction_check()
+
+	# Runs in both manual and AI mode: real clicks drive it in manual mode,
+	# mock_left_click/mock_right_click (set externally, e.g. by AutoTester or
+	# an AI driver) drive it in AI mode -- previously gated to manual-only,
+	# which meant a bot/AI could never trigger the mocked tool interaction.
+	manual_interaction_check()
 
 # Interaction override for Bot
 var mock_left_click: bool = false
@@ -194,13 +202,17 @@ func manual_interaction_check():
 	var right = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or mock_right_click
 	
 	if not left and not right: return
-	
+
+	if not raycast.is_colliding():
+		print("[DBG_INTERACT] no raycast hit, cam_pitch_deg=", rad_to_deg(camera.rotation.x))
+
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
 		var point = raycast.get_collision_point()
 		var normal = raycast.get_collision_normal()
 		var voxel_world = get_node_or_null("/root/World/VoxelWorld")
-		
+		print("[DBG_INTERACT] hit=", collider, " is_static=", collider is StaticBody3D, " voxel_world=", voxel_world)
+
 		# Left Click: Destroy
 		if left:
 			var item = ItemDatabase.get_item(selected_block_id)
