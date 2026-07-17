@@ -18,6 +18,14 @@ on:
 env:
   GODOT_VERSION: "4.3"
 
+# GitHub Actions defaults container-job `run:` steps to `sh`, not `bash`,
+# even though barichello/godot-ci ships bash — so `set -o pipefail` (a
+# bash/ksh builtin) fails with "Illegal option -o pipefail" under sh.
+# Force bash explicitly for every step in this workflow.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # ---------------------------------------------------------------------
   # Import check — the primary gate. Boots the Godot editor headlessly,
