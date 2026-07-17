@@ -144,6 +144,7 @@ func _ready():
 		49: ["Pine Wood", item_data_type.ItemType.BLOCK, 49],
 		50: ["Birch Leaves", item_data_type.ItemType.BLOCK, 50],
 		51: ["Pine Leaves", item_data_type.ItemType.BLOCK, 51],
+		52: ["Ice", item_data_type.ItemType.BLOCK, 52],
 		60: ["Leather Tunic", item_data_type.ItemType.RESOURCE, 0], # Armor Type?
 		61: ["Iron Chestplate", item_data_type.ItemType.RESOURCE, 0]
 	}

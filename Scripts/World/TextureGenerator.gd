@@ -48,7 +48,10 @@ func _ready():
 	# We need to align with ItemDatabase. Let's assume ItemDB IDs:
 	# 40=Water, 41=Lava, 42=Sand, 43=Snow, 44=FlowerRed, 45=FlowerYel, 46=Grass, 47=Cactus, 48=Birch, 49=Pine, 50=BirchLeaves, 51=PineLeaves
 	# Leaves (Generic Oak)
-	generate_texture(image, 2, 2, Color(0.1, 0.4, 0.1), 0.4) 
+	generate_texture(image, 2, 2, Color(0.1, 0.4, 0.1), 0.4)
+	# Ice (ID 52) - frozen patches inside the Tundra biome
+	generate_texture(image, 3, 2, Color(0.65, 0.85, 0.95), 0.15)
+	add_lines(image, 3, 2, Color(0.8, 0.93, 1.0), false) # Vertical crack highlights
 	
 	# --- Row 3: Fluids & More Wood ---
 	# Water (ID 40)
