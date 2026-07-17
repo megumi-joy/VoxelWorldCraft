@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://Scripts/World/TimeCycle.gd" id="2_time"]
 [ext_resource type="Script" path="res://Scripts/World/MobSpawner.gd" id="3_spawner"]
 [ext_resource type="PackedScene" uid="uid://mob123456" path="res://Scenes/Mob.tscn" id="4_mob_scene"]
+[ext_resource type="Script" path="res://Scripts/World/TrainTrackBuilder.gd" id="5_train_track"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -48,3 +49,8 @@ voxel_world = NodePath("../VoxelWorld")
 [node name="MobMultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("res://Scenes/Mob.tscn")
 spawn_path = NodePath("../MobSpawner")
+
+[node name="TrainTrack" type="Node3D" parent="."]
+script = ExtResource("5_train_track")
+voxel_world_path = NodePath("../VoxelWorld")
+auto_frame_camera = false
