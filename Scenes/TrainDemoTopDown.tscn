@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3 uid="uid://traindemotopdown123456"]
+
+[ext_resource type="Script" path="res://Scripts/World/VoxelWorld.gd" id="1_world"]
+[ext_resource type="Script" path="res://Scripts/World/TrainTrackBuilder.gd" id="2_train_track"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 3
+
+[node name="TrainDemoTopDown" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.707107, 0.707107, 0, -0.707107, -0.707107, 0, 0, 0)
+shadow_enabled = true
+light_energy = 1.2
+
+[node name="VoxelWorld" type="Node3D" parent="."]
+script = ExtResource("1_world")
+render_distance = 1
+
+[node name="TrainTrack" type="Node3D" parent="."]
+script = ExtResource("2_train_track")
+voxel_world_path = NodePath("../VoxelWorld")
+auto_frame_camera = true
+top_down_camera = true
