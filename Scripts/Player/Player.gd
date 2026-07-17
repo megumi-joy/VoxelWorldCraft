@@ -70,6 +70,10 @@ var _smoothed_look_delta: Vector2 = Vector2.ZERO
 @onready var inventory = get_node_or_null("Inventory")
 var selected_block_id: int = 1 # Default Dirt
 
+# Blocks that yield themselves (item id == block id) into the inventory when
+# mined, feeding Field Journal discovery. See manual_interaction_check().
+const COLLECTIBLE_BLOCK_IDS = [53, 54, 80, 81, 82, 83, 84] # Blue/Pink Flower, Copper/Gold/Quartz/Hematite/Malachite
+
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
@@ -90,7 +94,16 @@ func _ready():
 			if hud.get("armor_bar"):
 				stats.armor_changed.connect(func(val): hud.armor_bar.value = val) # Armor is literal? Or max 100?
 				# Let's assume max 100 for visual.
-		
+
+		# Field Journal discovery: any real item pickup (mining a mineral or
+		# a collectible flower, crafting, trading, ...) can unlock a codex
+		# entry -- see PlayerStats.discover_item() / CodexDatabase.gd. Toast
+		# on a brand-new discovery.
+		stats.species_discovered.connect(_on_species_discovered)
+
+	if inventory:
+		inventory.item_picked_up.connect(_on_item_picked_up)
+
 	# Setup WASD if not defined
 	add_input_mapping("move_forward", KEY_W)
 	add_input_mapping("move_backward", KEY_S)
@@ -99,6 +112,7 @@ func _ready():
 	add_input_mapping("jump", KEY_SPACE)
 	add_input_mapping("sprint", KEY_SHIFT)
 	add_input_mapping("inventory", KEY_E)
+	add_input_mapping("field_journal", KEY_J)
 
 	# Ensure nodes exist
 	if not head:
@@ -133,6 +147,13 @@ func on_hotbar_select(item_id: int):
 	
 	# Direct use for prototype
 	selected_block_id = item_id
+
+func _on_item_picked_up(id: int, _count: int) -> void:
+	if stats:
+		stats.discover_item(id)
+
+func _on_species_discovered(_species_key: String, entry: Dictionary) -> void:
+	show_message("Discovered: " + str(entry.get("name", "???")))
 
 func add_input_mapping(action, key):
 	if not InputMap.has_action(action):
@@ -363,11 +384,25 @@ func manual_interaction_check():
 				var block_pos = point - normal * 0.1
 				var block_type = get_block_at(voxel_world, block_pos)
 				var break_speed = get_break_speed(selected_block_id, block_type)
-				# Harvest: breaking a Berry Bush yields Berries (food) into the inventory.
+				var harvest_inv = get_node_or_null("Inventory")
+				# Harvest: breaking a Berry Bush yields Berries (food), not
+				# the bush block itself -- keep this special-cased and
+				# mutually exclusive with the generic collectible pickup
+				# below (elif), or breaking a bush would grant both.
 				if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
-					var harvest_inv = get_node_or_null("Inventory")
 					if harvest_inv: harvest_inv.add_item(70, 1) # Berries
 					show_message("Harvested Berries")
+				# Generic collectible pickup: the decorative flowers and the
+				# wave-2 mineral ores are each their own block+item (id ==
+				# block_id, see ItemDatabase.gd), so breaking one yields
+				# itself into the inventory -- this is also what feeds Field
+				# Journal discovery (Inventory.item_picked_up ->
+				# PlayerStats.discover_item, see Player._ready()).
+				# Intentionally scoped to just these collectible species
+				# rather than every mineable block (Dirt/Stone/Wood/...)
+				# to keep this change's blast radius limited to wave 2.
+				elif block_type in COLLECTIBLE_BLOCK_IDS:
+					if harvest_inv: harvest_inv.add_item(block_type, 1)
 				voxel_world.set_voxel.rpc(block_pos, 0)
 				await get_tree().create_timer(break_speed).timeout
 			elif collider.has_method("take_damage"):

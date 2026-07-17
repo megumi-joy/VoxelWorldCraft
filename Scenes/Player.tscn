@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://b8x6x4x4x4x4"]
+[gd_scene load_steps=13 format=3 uid="uid://b8x6x4x4x4x4"]
 
 [ext_resource type="Script" path="res://Scripts/Player/Player.gd" id="1_player"]
 [ext_resource type="Script" path="res://Scripts/UI/Inventory.gd" id="2_inv"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://trading_ui" path="res://Scenes/TradingUI.tscn" id="8_trading"]
 [ext_resource type="PackedScene" uid="uid://hud_overlay" path="res://Scenes/HUD.tscn" id="9_hud"]
 [ext_resource type="PackedScene" uid="uid://settings_panel" path="res://Scenes/SettingsPanel.tscn" id="10_settings"]
+[ext_resource type="PackedScene" uid="uid://field_journal_ui" path="res://Scenes/FieldJournalUI.tscn" id="11_journal"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.5
@@ -66,4 +67,6 @@ visible = false
 visible = false
 
 [node name="SettingsPanel" parent="HUD" instance=ExtResource("10_settings")]
+
+[node name="FieldJournalUI" parent="HUD" instance=ExtResource("11_journal")]
 visible = false

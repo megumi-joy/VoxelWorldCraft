@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 NetworkManager="*res://Scripts/Autoload/NetworkManager.gd"
 ItemDatabase="*res://Scripts/Autoload/ItemDatabase.gd"
+CodexDatabase="*res://Scripts/Autoload/CodexDatabase.gd"
 SaveSystem="*res://Scripts/Autoload/SaveSystem.gd"
 AutoTester="*res://Scripts/Testing/AutoTester.gd"
 HudSettings="*res://Scripts/Autoload/HudSettings.gd"
@@ -29,3 +30,12 @@ GraphicsSettings="*res://Scripts/Autoload/GraphicsSettings.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+; canvas_items stretch keeps every Control's pixel sizes proportional to the
+; actual render resolution instead of literal 1:1 pixels. Without this, a
+; HUD authored against the 1280x720 base (e.g. the movie-maker recipe's
+; default 480x270 capture res) renders at full fixed-pixel size against a
+; much smaller viewport -- the panel/hotbar that reads as a tasteful corner
+; overlay at 1280x720 balloons to ~2.5x the screen fraction at 480x270,
+; which is what made the HUD look oversized in the v0.2.0 showcase capture.
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"

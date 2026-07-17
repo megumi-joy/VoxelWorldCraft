@@ -2,6 +2,59 @@
 
 All notable changes to VoxelWorldCraft are documented here.
 
+## [Unreleased] - Wave 2: minerals + Field Journal
+
+The naturalist-fantasy direction: the core loop is observe -> identify ->
+catalog, not mine-craft-fight-survive. This wave lays the Field Journal
+(codex) foundation and adds mineral ore species to identify. Fauna/animals
+are explicitly out of scope for this wave (a later wave).
+
+### Added
+
+- **Mineral ores**: five new real-world minerals as minable ore blocks --
+  Copper Ore, Gold Ore, Quartz, Hematite, and Malachite Ore -- alongside the
+  existing Coal/Iron. Each has a distinct procedurally-generated texture and
+  spawns with plausible depth/biome gating (see `Chunk.gd`'s `ORE_TABLE`):
+  Gold is very deep and rare; Hematite is gated to Desert (its rust-red iron
+  oxide color also tints desert rock); Quartz favors the two "hard ground"
+  biomes (Desert/Tundra); Malachite forms in shallow oxidized zones gated to
+  Forest/Plains; Copper is shallow-mid and common everywhere. All five mine
+  with the existing pickaxe break-speed category.
+- **Field Journal**: a toggleable panel (default key `J`) cataloging two
+  categories -- Plants and Minerals -- with real educational facts per
+  species (botanical family/habitat/edibility for plants; geological
+  category/Mohs hardness/common use for minerals). Entries are locked
+  ("??? -- undiscovered") until the player has collected that species at
+  least once. Seeded with the three existing plants (Berry Bush, Blue
+  Flower, Pink Flower) plus the five new minerals.
+- **Discovery wiring**: picking up an item for the first time (mining,
+  crafting, trading, ...) can unlock its Field Journal entry --
+  `Inventory.item_picked_up` -> `PlayerStats.discover_item()` -> a toast via
+  the existing message banner. Breaking a mineral or a decorative flower
+  (Blue/Pink Flower) now actually yields itself into the inventory, which
+  previously silently gave nothing for anything other than the Berry Bush's
+  special-cased Berries harvest.
+
+### Changed
+
+- **HUD scale/layout**: the always-on HUD (health/hunger bars, hotbar,
+  AI toggle button, gold display) was resized and re-anchored to a compact
+  corner-overlay scale so the voxel world dominates the frame instead of a
+  large banner, and the hotbar's slot size now adapts to the viewport width
+  at runtime so the same layout works in both landscape and portrait
+  orientations (`project.godot` also gained `canvas_items` stretch mode so
+  HUD scale stays consistent across render resolutions). The gold display
+  changed from a bare "G: 0" label to a small rounded coin-icon chip.
+  Note for reviewers: this HUD sizing is expected to be revisited once the
+  in-progress UI-variant exploration lands -- treat these files as a
+  functional baseline, not the final look.
+
+### Fixed
+
+- **Health/hunger bar fill notch**: the bar fill's rounded corners on both
+  edges produced a visible crescent-shaped "bite" out of the bar at any
+  partial (non-0/100) value. Only the leading edge is rounded now.
+
 ## [0.2.0] - Speedrun update
 
 Five feature branches (biomes, flowers/food, UI polish, tools & building,

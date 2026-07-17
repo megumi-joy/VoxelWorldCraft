@@ -54,3 +54,11 @@ func _ready():
 		gfx_driver.name = "GraphicsSettingsDriver"
 		var tree3 := Engine.get_main_loop() as SceneTree
 		tree3.root.add_child(gfx_driver)
+
+	# Wave 2 verification/showcase: minerals + Field Journal + discovery,
+	# see Scripts/Testing/Wave2DemoDriver.gd for what it exercises.
+	if user_args.has("--wave2-demo"):
+		var wave2_driver = load("res://Scripts/Testing/Wave2DemoDriver.gd").new()
+		wave2_driver.name = "Wave2DemoDriver"
+		var tree4 := Engine.get_main_loop() as SceneTree
+		tree4.root.add_child(wave2_driver)

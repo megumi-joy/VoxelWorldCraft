@@ -10,10 +10,24 @@ Current version: **0.2.0** ("Speedrun update" -- see [CHANGELOG.md](CHANGELOG.md
 
 ### World generation & biomes
 - Chunked infinite terrain (16x16 columns) with noise-based height, ore
-  veins (coal/iron), and structure scattering (trees, cacti).
+  veins, and structure scattering (trees, cacti).
 - Four biomes: **Forest** (dense trees, flowers, tall grass, Berry Bushes),
   **Plains** (open grassland, sparse flora, rare lone trees), **Desert**
   (sand, cacti), and **Tundra** (Snow and Ice, split by moisture).
+- **Mineral ores** (wave 2): Coal, Iron, Copper, Gold, Quartz, Hematite, and
+  Malachite, each depth- and (for some) biome-gated for plausible geology --
+  see `Chunk.gd`'s `ORE_TABLE`. All mine with the pickaxe break-speed
+  category.
+
+### Field Journal (wave 2)
+- A naturalist-fantasy codex, toggled with **J**: two categories, Plants and
+  Minerals, each entry showing real facts (botanical family/habitat/edible?
+  for plants; geological category/Mohs hardness/common use for minerals).
+- Entries start locked ("??? -- undiscovered") and unlock the first time the
+  player collects that species -- mining a mineral, picking a flower, or
+  harvesting Berries. See `CodexDatabase.gd` (entry data) and
+  `PlayerStats.discover_item()` / `Inventory.item_picked_up` (discovery
+  wiring).
 
 ### Flowers & food
 - Berry Bush world decoration, harvestable by breaking it for **Berries** --
@@ -50,7 +64,8 @@ Current version: **0.2.0** ("Speedrun update" -- see [CHANGELOG.md](CHANGELOG.md
 ### Also included
 - Basic inventory, save system, mobs/villagers, bed/furnace/crafting-table
   block entities, a simple chat UI, and a headless `AutoTester` /
-  `MovementDemoDriver` pair for automated verification (see below).
+  `MovementDemoDriver` / `Wave2DemoDriver` set for automated verification
+  (see below).
 
 ## Running headless (verification / CI)
 
@@ -69,3 +84,13 @@ the `barichello/godot-ci:4.3`-based container via podman (or Docker). See
   --movement-demo` (drives `Scripts/Testing/MovementDemoDriver.gd` --
   scripted walk/sprint/jump/strafe timeline through the real manual-input
   code path; opt-in flags after `--` land in `OS.get_cmdline_user_args()`).
+- **Wave 2 (minerals + Field Journal) demo/verification**: `godot --headless
+  --path . Scenes/LaunchTest.tscn -- --wave2-demo` (drives
+  `Scripts/Testing/Wave2DemoDriver.gd` -- runs a statistical self-check of
+  the ore-generation table, places real mineral blocks via
+  `VoxelWorld.set_voxel()` and mines one back out, grants a handful of
+  plant/mineral pickups through the real `Inventory.add_item()` path to
+  exercise Field Journal discovery, then opens the Field Journal
+  programmatically via `FieldJournalUI.open()` -- everything logged with a
+  `[Wave2Demo]` prefix). This is also the scene/flag combo used with
+  `tools/record_movie_maker.sh` to capture the wave-2 showcase clip.

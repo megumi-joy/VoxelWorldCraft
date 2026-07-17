@@ -219,6 +219,26 @@ func _ready():
 	berries.nutrition_value = 12.0
 	items[70] = berries
 
+	# ID 80-84: Mineral ores (wave 2). Each is its own block+item (id ==
+	# block_id, same pattern as Coal/Iron), mined via the pickaxe category
+	# (see BLOCK_TOOL_CATEGORY below), generated depth/biome-gated in
+	# Chunk.gd's ORE_TABLE, and registered as Field Journal "Minerals" codex
+	# entries in CodexDatabase.gd keyed off these same item ids.
+	var minerals = {
+		80: "Copper Ore",
+		81: "Gold Ore",
+		82: "Quartz",
+		83: "Hematite",
+		84: "Malachite Ore",
+	}
+	for mid in minerals:
+		var m = item_data_type.new()
+		m.id = mid
+		m.name = minerals[mid]
+		m.type = item_data_type.ItemType.BLOCK
+		m.block_id = mid
+		items[mid] = m
+
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements
 	var elements = ["Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium", "Aluminum", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium", "Indium", "Tin", "Antimony", "Tellurium", "Iodine", "Xenon", "Cesium", "Barium", "Lanthanum", "Cerium", "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium", "Iridium", "Platinum", "Gold", "Mercury", "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon", "Francium", "Radium", "Actinium", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium", "Roentgenium", "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson"]
@@ -251,6 +271,11 @@ const BLOCK_TOOL_CATEGORY = {
 	3: "pickaxe",  # Stone
 	5: "pickaxe",  # Coal Ore
 	6: "pickaxe",  # Iron Ore
+	80: "pickaxe", # Copper Ore
+	81: "pickaxe", # Gold Ore
+	82: "pickaxe", # Quartz
+	83: "pickaxe", # Hematite
+	84: "pickaxe", # Malachite Ore
 	4: "axe",      # Wood (Oak Log)
 	13: "axe",     # Planks
 	48: "axe",     # Birch Wood
