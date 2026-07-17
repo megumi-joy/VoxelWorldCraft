@@ -208,19 +208,26 @@ func setup_nodes():
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
-		# Light smoothing: blend each raw mouse delta with the previous
-		# smoothed delta so small jitter doesn't translate 1:1 into camera
-		# shake, while staying responsive (low smoothing weight by default).
-		_smoothed_look_delta = _smoothed_look_delta.lerp(event.relative, 1.0 - look_smoothing)
-		head.rotate_y(-_smoothed_look_delta.x * mouse_sensitivity)
-		camera.rotate_x(-_smoothed_look_delta.y * mouse_sensitivity)
-		camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-90), deg_to_rad(90))
+		apply_look_delta(event.relative)
 
 	if event.is_action_pressed("ui_cancel"): # Escape
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+## Rotates the camera by a raw pixel delta, with the same smoothing curve
+## mouse-look uses. Shared entry point for mouse motion (above) and
+## TouchControls.gd's look-drag area, so touch and mouse camera control are
+## identical in feel instead of two parallel implementations.
+func apply_look_delta(relative: Vector2) -> void:
+	# Light smoothing: blend each raw delta with the previous smoothed delta
+	# so small jitter doesn't translate 1:1 into camera shake, while staying
+	# responsive (low smoothing weight by default).
+	_smoothed_look_delta = _smoothed_look_delta.lerp(relative, 1.0 - look_smoothing)
+	head.rotate_y(-_smoothed_look_delta.x * mouse_sensitivity)
+	camera.rotate_x(-_smoothed_look_delta.y * mouse_sensitivity)
+	camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-90), deg_to_rad(90))
 
 # AI Control
 @export var ai_enabled: bool = false # Default to Manual
@@ -252,15 +259,22 @@ func _physics_process(delta):
 		# accel/friction model below.)
 		process_ai(delta)
 	else:
-		if Input.is_action_just_pressed("jump"):
+		if Input.is_action_just_pressed("jump") or _touch_jump_requested:
 			_jump_buffer_timer = jump_buffer_time
+			_touch_jump_requested = false
 
 		# Get the input direction and turn it into a world-space move direction
 		# relative to where the player is looking (Head yaw), then run it
 		# through acceleration/friction toward a target speed instead of
 		# snapping straight to it -- this is what makes movement feel weighty
 		# rather than instant/robotic.
+		# touch_move_vector (set live by TouchControls.gd's virtual joystick,
+		# zero when not touched) is a fallback, not an override -- keyboard
+		# still wins if both happen to be active at once (e.g. a keyboard
+		# plugged into a tablet mid-touch-drag).
 		var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+		if input_dir == Vector2.ZERO:
+			input_dir = touch_move_vector
 		is_sprinting = input_dir != Vector2.ZERO and Input.is_action_pressed("sprint")
 		_apply_horizontal_movement(delta, input_dir, is_sprinting)
 
@@ -333,6 +347,16 @@ func _apply_sprint_fov(delta: float, is_sprinting: bool) -> void:
 # Interaction override for Bot
 var mock_left_click: bool = false
 var mock_right_click: bool = false
+
+# Touch-control overrides (set live by Scripts/UI/TouchControls.gd's virtual
+# joystick / Jump button). Same shape as the mock_left/right_click hooks
+# above -- a UI source feeding the same code path real input drives, not a
+# parallel movement system.
+var touch_move_vector: Vector2 = Vector2.ZERO
+var _touch_jump_requested: bool = false
+
+func touch_jump() -> void:
+	_touch_jump_requested = true
 
 func manual_interaction_check():
 	var left = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or mock_left_click

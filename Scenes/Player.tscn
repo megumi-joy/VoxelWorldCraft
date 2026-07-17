@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://b8x6x4x4x4x4"]
+[gd_scene load_steps=13 format=3 uid="uid://b8x6x4x4x4x4"]
 
 [ext_resource type="Script" path="res://Scripts/Player/Player.gd" id="1_player"]
 [ext_resource type="Script" path="res://Scripts/UI/Inventory.gd" id="2_inv"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://furnace_ui" path="res://Scenes/FurnaceUI.tscn" id="7_furnace"]
 [ext_resource type="PackedScene" uid="uid://trading_ui" path="res://Scenes/TradingUI.tscn" id="8_trading"]
 [ext_resource type="PackedScene" uid="uid://hud_overlay" path="res://Scenes/HUD.tscn" id="9_hud"]
+[ext_resource type="PackedScene" uid="uid://touch_controls" path="res://Scenes/TouchControls.tscn" id="10_touch"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.5
@@ -63,3 +64,5 @@ visible = false
 
 [node name="TradingUI" parent="HUD" instance=ExtResource("8_trading")]
 visible = false
+
+[node name="TouchControls" parent="." instance=ExtResource("10_touch")]
