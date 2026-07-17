@@ -22,10 +22,10 @@ func _ready():
 	
 	if stats:
 		stats.died.connect(_on_death)
-		
-		# Connect HUD Bars
-		# Connect HUD Bars
-		var hud = get_node_or_null("HUD")
+
+		# Connect HUD Bars. "PlayerHUD" is the Scenes/HUD.tscn instance nested
+		# inside the "HUD" CanvasLayer (see Scenes/Player.tscn).
+		var hud = get_node_or_null("HUD/PlayerHUD")
 		if hud:
 			if hud.get("health_bar"):
 				stats.health_changed.connect(func(val, max_val): hud.health_bar.value = (val / max_val) * 100)
@@ -120,22 +120,27 @@ func setup_nodes():
 	inv.name = "Inventory"
 	add_child(inv)
 	
-	# Create basic HUD if missing
+	# Create basic HUD if missing (defensive fallback for contexts where
+	# Player isn't instanced from the full Player.tscn, e.g. isolated tests).
+	# Mirrors Player.tscn's real layout: a "HUD" CanvasLayer containing the
+	# PlayerHUD overlay (Scenes/HUD.tscn) plus the hotbar, so the node paths
+	# used elsewhere in this script ("HUD/PlayerHUD", "HUD/HotbarUI") resolve
+	# the same way regardless of which path created them.
 	if not has_node("HUD"):
-		var hud = Control.new()
-		hud.name = "HUD"
-		# Load and attach HUD script
-		var hud_script = load("res://Scripts/UI/HUD.gd")
-		hud.set_script(hud_script)
-		add_child(hud)
-		
-		# Hotbar is usually child of HUD or separate
-		# If HotbarUI is separate scene, we can add it
+		var hud_layer = CanvasLayer.new()
+		hud_layer.name = "HUD"
+		add_child(hud_layer)
+
+		var hud_scene = load("res://Scenes/HUD.tscn")
+		var player_hud = hud_scene.instantiate()
+		player_hud.name = "PlayerHUD"
+		hud_layer.add_child(player_hud)
+
 		var hotbar_res = load("res://Scenes/HotbarUI.tscn")
 		if hotbar_res:
 			var hotbar = hotbar_res.instantiate()
-			hud.add_child(hotbar)
-	pass
+			hotbar.name = "HotbarUI"
+			hud_layer.add_child(hotbar)
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
@@ -298,7 +303,7 @@ func toggle_ai():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	
 	# Update HUD Button visual
-	var hud = get_node_or_null("HUD")
+	var hud = get_node_or_null("HUD/PlayerHUD")
 	if hud and hud.has_method("update_ai_button"):
 		hud.update_ai_button(ai_enabled)
 
@@ -340,7 +345,7 @@ func get_block_at(world, pos: Vector3) -> int:
 func show_message(text: String):
 	print("Message: " + text)
 	# Check HUD
-	var hud = get_node_or_null("HUD")
+	var hud = get_node_or_null("HUD/PlayerHUD")
 	if hud:
 		var label = hud.get_node_or_null("MessageLabel")
 		if not label:
