@@ -1,0 +1,126 @@
+name: Godot CI
+
+# Runs on every push to main and on every pull request.
+#
+# RUNNER NOTE: this workflow is written for GitHub-hosted `ubuntu-latest`
+# runners. If GitHub-hosted Actions minutes are billing-blocked for this
+# account, change `runs-on: ubuntu-latest` (both jobs below) to
+# `runs-on: [self-hosted, Linux]` to use the "voicy-arch-docker-runner"
+# self-hosted runner instead — see the PR description for details on
+# runner availability for this repo.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GODOT_VERSION: "4.3"
+
+# GitHub Actions defaults container-job `run:` steps to `sh`, not `bash`,
+# even though barichello/godot-ci ships bash — so `set -o pipefail` (a
+# bash/ksh builtin) fails with "Illegal option -o pipefail" under sh.
+# Force bash explicitly for every step in this workflow.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Import check — the primary gate. Boots the Godot editor headlessly,
+  # which forces a full project scan: every .gd script gets compiled and
+  # every .tscn scene that's reachable gets parsed. Any GDScript syntax
+  # error or corrupt/invalid scene resource shows up as a `SCRIPT ERROR:`
+  # or `ERROR:` line in the log. Godot's own process exit code stays 0
+  # even when these errors occur, so we grep the captured log ourselves
+  # and fail the job if anything matches.
+  # ---------------------------------------------------------------------
+  import-check:
+    name: Import Check (script/parse errors)
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run headless project import
+        run: |
+          set -o pipefail
+          godot --headless --editor --quit --path . 2>&1 | tee /tmp/import.log
+
+      - name: Check import log for script/parse errors
+        run: |
+          if grep -nE '^(SCRIPT ERROR|ERROR): ' /tmp/import.log; then
+            echo ""
+            echo "::error::Godot headless import reported script/parse errors (see matches above). Failing the build."
+            exit 1
+          fi
+          echo "No SCRIPT ERROR / parse errors found — import check passed."
+
+      - name: Upload import log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-import-log
+          path: /tmp/import.log
+          retention-days: 7
+
+  # ---------------------------------------------------------------------
+  # Desktop export — builds the Steam-relevant desktop targets (Linux and
+  # Windows) inside the same godot-ci Docker image, so the build is fully
+  # containerized/reproducible. Uses the export presets + export templates
+  # bundled in barichello/godot-ci:4.3.
+  #
+  # This is a secondary, non-blocking job: it only runs after the import
+  # check passes, but a failure here does not fail the overall workflow
+  # (continue-on-error), since desktop export is newer/less proven in CI
+  # than the import check. Artifacts are the raw exported binaries —
+  # Steam upload/Steamworks packaging is a separate, later milestone and
+  # is intentionally NOT done here.
+  # ---------------------------------------------------------------------
+  export-desktop:
+    name: Export Desktop (${{ matrix.platform }})
+    needs: import-check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    container:
+      image: barichello/godot-ci:4.3
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            preset: "Linux"
+            out: build/linux/VoxelWorldCraft.x86_64
+          - platform: windows
+            preset: "Windows Desktop"
+            out: build/windows/VoxelWorldCraft.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create export output directory
+        run: mkdir -p "$(dirname '${{ matrix.out }}')"
+
+      # GitHub Actions container jobs set HOME to /github/home, not /root —
+      # but the godot-ci image bakes the 4.3 export templates under
+      # /root/.local/share/godot/export_templates. Godot looks for templates
+      # under $HOME, so without this the export fails with "no export
+      # template found" even though the templates are present in the image.
+      # No-op if HOME is already /root (e.g. local podman testing).
+      - name: Relocate export templates to $HOME
+        run: |
+          if [ "$HOME" != /root ]; then
+            mkdir -p "$HOME/.local/share/godot/export_templates"
+            cp -rn /root/.local/share/godot/export_templates/4.3.stable "$HOME/.local/share/godot/export_templates/"
+          fi
+
+      - name: Export ${{ matrix.platform }} build
+        run: godot --headless --export-release "${{ matrix.preset }}" "${{ matrix.out }}" --path .
+
+      - name: Upload ${{ matrix.platform }} build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxelWorldCraft-${{ matrix.platform }}-${{ github.sha }}
+          path: build/${{ matrix.platform }}/
+          retention-days: 14
