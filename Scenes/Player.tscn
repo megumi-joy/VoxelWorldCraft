@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://b8x6x4x4x4x4"]
+[gd_scene load_steps=14 format=3 uid="uid://b8x6x4x4x4x4"]
 
 [ext_resource type="Script" path="res://Scripts/Player/Player.gd" id="1_player"]
 [ext_resource type="Script" path="res://Scripts/UI/Inventory.gd" id="2_inv"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://hud_overlay" path="res://Scenes/HUD.tscn" id="9_hud"]
 [ext_resource type="PackedScene" uid="uid://settings_panel" path="res://Scenes/SettingsPanel.tscn" id="10_settings"]
 [ext_resource type="PackedScene" uid="uid://field_journal_ui" path="res://Scenes/FieldJournalUI.tscn" id="11_journal"]
+[ext_resource type="PackedScene" uid="uid://touch_controls" path="res://Scenes/TouchControls.tscn" id="12_touch"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.5
@@ -70,3 +71,5 @@ visible = false
 
 [node name="FieldJournalUI" parent="HUD" instance=ExtResource("11_journal")]
 visible = false
+
+[node name="TouchControls" parent="." instance=ExtResource("12_touch")]
