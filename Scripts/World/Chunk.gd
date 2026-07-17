@@ -23,10 +23,27 @@ func setup(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D):
 	noise = _noise
 	material = _material
 	world_node = get_parent()
-	
+
 	moisture_noise = FastNoiseLite.new()
 	moisture_noise.seed = noise.seed + 12345
 	moisture_noise.frequency = 0.005 # Large biome patches
+
+# Alternate entry point used by the Minecraft importer (see
+# Scripts/Import/MinecraftImporter.gd / MCImportView.gd) instead of
+# `setup()` + procedural `generate_data()`. Populates voxel_data directly
+# with already-mapped block ids BEFORE the node enters the tree, so:
+#   - generate_data()'s own `if not voxel_data.is_empty(): return` guard
+#     (see below) makes it a no-op -- no noise-based terrain gets generated
+#     over the imported data.
+#   - world_node is set here (not left to get_parent(), which is null at
+#     this point same as the procedural setup() path above) so the very
+#     first generate_mesh() call -- fired from _ready() -- can already see
+#     sibling chunks for cross-chunk face culling via has_voxel().
+func setup_import(pos: Vector2i, _material: StandardMaterial3D, _world_node: Node3D, data: Dictionary):
+	chunk_position = pos
+	material = _material
+	world_node = _world_node
+	voxel_data = data
 
 func _ready():
 	mesh_instance = MeshInstance3D.new()
@@ -346,6 +363,9 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 82: atlas_idx = 4; atlas_row = 5 # Quartz
 	elif type == 83: atlas_idx = 5; atlas_row = 5 # Hematite
 	elif type == 84: atlas_idx = 6; atlas_row = 5 # Malachite Ore
+
+	# Row 6: Minecraft importer (Scripts/Import/, tools/mc_import/)
+	elif type == 90: atlas_idx = 0; atlas_row = 6 # Unmapped MC block (gap-list placeholder)
 
 	var u_start = atlas_idx * UV_SIZE
 	var v_start = atlas_row * UV_SIZE
