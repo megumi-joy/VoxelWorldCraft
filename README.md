@@ -1,0 +1,71 @@
+# VoxelWorldCraft
+
+A Minecraft-like voxel sandbox prototype built in Godot 4.3: chunked terrain
+generation, first-person movement, block break/place, crafting, and a
+lightweight multiplayer layer.
+
+Current version: **0.2.0** ("Speedrun update" -- see [CHANGELOG.md](CHANGELOG.md)).
+
+## Features
+
+### World generation & biomes
+- Chunked infinite terrain (16x16 columns) with noise-based height, ore
+  veins (coal/iron), and structure scattering (trees, cacti).
+- Four biomes: **Forest** (dense trees, flowers, tall grass, Berry Bushes),
+  **Plains** (open grassland, sparse flora, rare lone trees), **Desert**
+  (sand, cacti), and **Tundra** (Snow and Ice, split by moisture).
+
+### Flowers & food
+- Berry Bush world decoration, harvestable by breaking it for **Berries** --
+  a consumable that restores Hunger.
+- Blue and Pink decorative flowers alongside the existing Red/Yellow set.
+- Eating a consumable from the hotbar restores Hunger via `PlayerStats`.
+
+### Tools & building
+- Held tools affect block-break speed: pickaxe on stone/ore, axe on
+  wood/planks, shovel on dirt/sand/farmland. Bare hands (or the wrong tool)
+  break slower.
+- The full wooden tool set (Pickaxe, Shovel, Axe, Hoe) is craftable.
+- Block placement consumes from inventory and places the item's correct
+  underlying block (handles items that reuse a different block id, like
+  Sand/Snow).
+- Crafting recipes: Wood -> Planks, Planks -> Crafting Table, Wheat ->
+  Bread, Planks -> wooden tools, Planks -> Sticks.
+
+### UI
+- Chunky HUD: health and hunger bars with icons, hotbar, and a crosshair.
+
+### Movement feel
+- Acceleration/friction-based movement (not an instant velocity snap),
+  with reduced air control while airborne.
+- Asymmetric jump gravity (floaty rise, snappy fall), coyote time (jump
+  briefly after leaving a ledge), and jump buffering (a jump press just
+  before landing still fires).
+- Sprint (Shift) with a matching camera FOV kick.
+- Speed-scaled head-bob that fades to neutral when idle or airborne.
+- Light mouse-look smoothing.
+- All of the above are `@export`ed on `Player.gd` for tuning from the
+  Inspector.
+
+### Also included
+- Basic inventory, save system, mobs/villagers, bed/furnace/crafting-table
+  block entities, a simple chat UI, and a headless `AutoTester` /
+  `MovementDemoDriver` pair for automated verification (see below).
+
+## Running headless (verification / CI)
+
+Godot is not installed on the host; all headless verification runs inside
+the `barichello/godot-ci:4.3`-based container via podman (or Docker). See
+`tools/record_movie_maker.sh` for the gameplay-recording recipe.
+
+- **Import / parse check**: `godot --headless --path . --import`
+- **Automated crafting/tools smoke test**: `godot --headless --path .
+  Scenes/LaunchTest.tscn --run-tests` (drives `Scripts/Testing/AutoTester.gd`
+  -- gathers wood, crafts planks/table/tools, logs to
+  `playthrough_log.json`). Note: pass `--run-tests` as a direct engine
+  argument, *not* after a `--` separator -- `AutoTester.gd` checks
+  `OS.get_cmdline_args()`, which does not include user args after `--`.
+- **Movement-feel demo**: `godot --path . Scenes/LaunchTest.tscn --
+  --movement-demo` (drives `Scripts/Testing/MovementDemoDriver.gd` --
+  scripted walk/sprint/jump/strafe timeline through the real manual-input
+  code path; opt-in flags after `--` land in `OS.get_cmdline_user_args()`).
