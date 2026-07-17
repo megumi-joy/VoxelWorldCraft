@@ -32,6 +32,12 @@ func _ready():
 			"output": {"id": tid, "count": 1}
 		})
 
+	# 2 Planks -> 4 Sticks
+	recipes.append({
+		"input": [{"id": 13, "count": 2}],
+		"output": {"id": 23, "count": 4}
+	})
+
 func can_craft(recipe_index: int, inventory: Node) -> bool:
 	if recipe_index < 0 or recipe_index >= recipes.size(): return false
 	var recipe = recipes[recipe_index]
