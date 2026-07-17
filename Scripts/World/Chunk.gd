@@ -365,11 +365,19 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	st.set_uv(face_uvs[2]); st.add_vertex(pos_f + vertices[2])
 	st.set_uv(face_uvs[3]); st.add_vertex(pos_f + vertices[3])
 
-func set_block(local_pos: Vector3i, type: int):
+## Writes voxel_data WITHOUT triggering a mesh rebuild. Bulk-edit callers
+## (e.g. TrainTrackBuilder's railbed grading, which can touch hundreds of
+## blocks per chunk) use this plus a single explicit generate_mesh() call
+## once all their edits for a chunk are done, instead of paying for a full
+## chunk remesh (generate_mesh() walks all 16*256*16 cells) on every block.
+func set_block_silent(local_pos: Vector3i, type: int) -> void:
 	if type == 0:
-		if voxel_data.has(local_pos):
-			voxel_data.erase(local_pos)
-			if not is_generating: generate_mesh()
+		voxel_data.erase(local_pos)
 	else:
 		voxel_data[local_pos] = type
-		if not is_generating: generate_mesh()
+
+func set_block(local_pos: Vector3i, type: int):
+	var existed := voxel_data.has(local_pos)
+	set_block_silent(local_pos, type)
+	if not is_generating and (type != 0 or existed):
+		generate_mesh()
