@@ -1,27 +1,49 @@
 extends Node3D
 class_name TrainTrackBuilder
 
-## FIRST-CUT rail + train system for VoxelWorldCraft.
+## MINECRAFT-STYLE BLOCK-GRID rails for VoxelWorldCraft.
 ##
 ## Reused from megumi-joy/Low-Poly-City-Delivery's road-generator approach
-## (scripts/world/train_track_generator.gd in that repo): a Path3D holds a
-## Curve3D route; CSGPolygon3D nodes in MODE_PATH extrude a cross-section
-## along that curve to build the rails (and, here, a ballast bed); a
-## PathFollow3D carries the locomotive. Sleepers/ties and the locomotive mesh
-## are new for this voxel-terrain first cut.
+## for the locomotive + PathFollow3D plumbing; the rail geometry itself is
+## now a block-grid tile chain, not a road-style curve extrusion.
 ##
-## Both the rails (CSGPolygon3D.path_rotation) and the locomotive
-## (PathFollow3D.rotation_mode) are deliberately pinned to yaw-only rotation
-## (PATH_ROTATION_PATH / ROTATION_Y) rather than each following its own
-## independent full-3D orientation frame (the PATH_FOLLOW / ROTATION_ORIENTED
-## defaults) -- on this terrain-following, sloped loop those two frames don't
-## necessarily agree, which is what made the locomotive appear to float
-## above the rails before this was pinned down.
+## WHY BLOCK-GRID (not a curve draped over -- or carved into -- terrain):
+## a smooth Curve3D spline sampled at a handful of points floats over dips
+## and cuts through bumps, because the smooth line and the blocky ground
+## it's drawn over have no relationship past those sample points. An earlier
+## attempt fixed that by grading + CARVING a corridor into the actual voxel
+## terrain -- but that leaves an abrupt, ugly scar where the carved strip
+## meets natural ground, and it's destructive (edits world blocks).
 ##
-## Runtime-only (deliberately NOT @tool): it builds procedurally in
-## _ready(), the same pattern VoxelWorld/Chunk already use for terrain, so
-## it plays nicely with `--headless --import` (no editor-only code paths to
-## misfire during import) and with the podman Movie Maker recording flow.
+## The Minecraft-native fix is a block-grid rail: walk the route one block
+## column at a time, sample that column's REAL terrain top (never write to
+## it), and place a rail tile that sits exactly on that block's top face --
+## a flat plate when the next column is the same height, a ~45 degree ramp
+## tile when it's one block up/down. The rails therefore hug whatever
+## terrain is already there by construction: they can't float (every tile
+## is anchored to an actual sampled block top) and they can't carve/scar
+## (voxel_data is never written).
+##
+## TWO SEPARATE geometry constructs share the same sampled route, and this
+## split matters -- collapsing them back into one is what reintroduces
+## floating:
+##  1. The VISIBLE rail tiles (_build_track_tiles): discrete, blocky,
+##     exactly one flat-or-sloped segment per route edge. This is what
+##     "block-grid" means -- it must stay crisp, not smoothed, so it always
+##     reads as sitting on the block grid.
+##  2. The LOCOMOTIVE's path (_build_loco_curve): a *separate*, much denser
+##     point sequence along the SAME route/heights, fed into a Curve3D so
+##     PathFollow3D/TrainMover glides continuously instead of hopping tile
+##     to tile. Critically this denser sampling linearly interpolates Y
+##     within each edge before any Bezier smoothing is applied, so the
+##     smoothing only rounds off the (small) sub-segments at slope
+##     transitions -- if the loco path were built from the same *coarse*
+##     points as the visible tiles, Bezier smoothing across a full 1-block
+##     rise would bulge ~0.1 unit off the actual ramp surface, which is
+##     visible against a 0.22-unit-tall rail head. Denser sampling shrinks
+##     that bulge proportionally to the sub-segment height, not the tile
+##     height, keeping the loco's wheels visually seated on the rail tiles
+##     through slopes, not just on flat stretches.
 ##
 ## Terrain-height matching: VoxelWorld/Chunk.gd computes each column's
 ## topmost solid block as
@@ -30,25 +52,14 @@ class_name TrainTrackBuilder
 ## (Chunk.gd fills y in range(visual_height + 1), and the UP face of a unit
 ## cube at integer Y sits at local y=1, i.e. world Y = block_y + 1). This
 ## script samples the SAME `noise` instance the sibling VoxelWorld already
-## seeded (not a fresh one), so the rails track the actual generated terrain
-## rather than a guessed constant height.
+## seeded (not a fresh one, and not by reading Chunk.voxel_data -- the
+## formula alone is enough, so tile placement has no dependency on chunk
+## load/generate timing).
 ##
-## RAILBED GRADING (cut/fill), not a curve draped over raw terrain: sampling
-## the raw per-column height at only a handful of widely-spaced points (the
-## old `num_points`-corner loop) and spline-interpolating between them is
-## what let the rails float over dips and cut through bumps -- the smooth
-## curve and the blocky ground it was drawn over had no relationship past
-## those few sample points. The fix is a real railway cut/fill:
-## `_get_dense_route_points()` walks the route at ~1-block spacing;
-## `_compute_graded_bed_heights()` smooths that dense height sample and then
-## slope-limits it (see `max_grade_per_block`) into a gently graded bed
-## profile; `_carve_railbed()` then edits the actual voxel terrain in a
-## strip a few blocks wide (`bed_half_width_blocks`) under the route --
-## clearing blocks above the bed (cutting through hills) and filling solid
-## blocks up to the bed (filling across dips) -- via Chunk.set_block_silent
-## + a single Chunk.generate_mesh() per touched chunk. The rail curve is
-## then drawn at that same graded bed height, so it sits on a continuous
-## strip of solid ground for the whole loop, not just at the sample points.
+## Runtime-only (deliberately NOT @tool): it builds procedurally in
+## _ready(), the same pattern VoxelWorld/Chunk already use for terrain, so
+## it plays nicely with `--headless --import` (no editor-only code paths to
+## misfire during import) and with the podman Movie Maker recording flow.
 
 @export var voxel_world_path: NodePath = NodePath("../VoxelWorld")
 
@@ -66,18 +77,16 @@ class_name TrainTrackBuilder
 @export var radius_x: float = 20.0
 @export var radius_z: float = 14.0
 @export var rail_gauge: float = 1.5       # half-gauge: centerline -> each rail
-@export var rail_clearance: float = 0.3   # rails sit this far above the graded bed surface
-@export var sleeper_spacing: float = 2.2  # metres between ties
+@export var rail_clearance: float = 0.04  # rails sit this far above the sampled block's top face -- just enough to avoid z-fighting with the terrain quad, not a visible gap
 @export var train_speed: float = 10.0     # m/s along the curve
-@export var chunk_margin_blocks: int = 8  # extra blocks force-loaded beyond the loop's bbox
-@export var dense_spacing: float = 1.0    # metres between route samples used for grading -- ~1 block, so the bed is carved essentially column-by-column along the whole route, not just at a handful of corners
-@export var max_grade_per_block: float = 0.35  # max |Delta bed height| per block of route travel -- keeps the embankment a gentle railway grade instead of a staircase
-@export var bed_half_width_blocks: int = 3     # embankment half-width in blocks (total carved strip = 2*this+1 wide); must comfortably cover the ballast cross-section, which spans about +/-(rail_gauge+0.9)
+@export var chunk_margin_blocks: int = 8  # extra blocks force-loaded beyond the loop's bbox so terrain renders under the whole track
 
-const RAIL_HEAD_HEIGHT := 0.22  # rail cross-section height above the curve (see _add_rail)
-const BED_FILL_BLOCK := 3         # Stone -- compacted cut/fill embankment material
-const BED_CLEAR_MARGIN := 24      # blocks above the bed surface to clear -- covers hills plus any trees/structures poking into the corridor
-const HEIGHT_SMOOTH_RADIUS := 3   # points each side averaged before slope-limiting, so the bed reads as a real graded embankment instead of a jagged staircase that merely happens to obey the slope cap
+const RAIL_HEAD_HEIGHT := 0.22   # rail cross-section height above a tile's base
+const RAIL_WIDTH := 0.16         # rail cross-section width
+const TIE_HEIGHT := 0.12
+const TIE_THICKNESS := 0.35      # tie extent along the direction of travel
+const LOCO_PATH_SUBDIV := 4      # sub-points per route edge used ONLY for the loco's Curve3D -- see header note on why this must be denser than the visible tiles
+const TANGENT_SCALE := 0.22      # Catmull-Rom-ish tangent scale for the loco curve
 
 var _voxel_world: VoxelWorld
 var _built := false
@@ -104,186 +113,71 @@ func _build() -> void:
 	if _voxel_world.chunk_material == null:
 		push_warning("[TrainTrackBuilder] chunk_material still null after waiting -- terrain under the track may render unlit.")
 
-	var pts2d := _get_dense_route_points()
-	var route_chunk_positions := _ensure_chunks_loaded(pts2d)
-	# The chunks _ensure_chunks_loaded() just force-created need their real
-	# terrain data generated (Chunk._ready() -> generate_data()) BEFORE we
-	# carve into them -- otherwise our carve edits could land in an empty
-	# voxel_data dict, and generate_data()'s "already populated" guard would
-	# then skip growing natural terrain there at all. Wait for that instead
-	# of assuming add_child() -> _ready() timing.
-	await _wait_for_route_chunks_ready(route_chunk_positions)
+	var route_cols := _get_route_columns()
+	_ensure_chunks_loaded(route_cols)
 
-	var raw_bed_heights := _compute_graded_bed_heights(pts2d)
-	var bed_face_heights: Array = []
-	for h in raw_bed_heights:
-		bed_face_heights.append(int(round(h)))
+	var heights: Array = []
+	for col in route_cols:
+		heights.append(_terrain_top_block_y(col.x, col.y))
 
-	_carve_railbed(pts2d, bed_face_heights)
+	var tiles := Node3D.new()
+	tiles.name = "RailTiles"
+	add_child(tiles)
+	_build_track_tiles(tiles, route_cols, heights)
 
-	var path := _build_curve(pts2d, bed_face_heights)
+	var path := _build_loco_curve(route_cols, heights)
 	add_child(path)
-
-	_build_rails(path)
-	_build_sleepers(path)
 	_spawn_train(path)
 
 	if auto_frame_camera:
-		_add_demo_camera(path)
+		_add_demo_camera(route_cols, heights)
 
-	print("[TrainTrackBuilder] built loop, baked length=", path.curve.get_baked_length())
+	print("[TrainTrackBuilder] built block-grid loop, ", route_cols.size(), " tiles, baked loco path length=", path.curve.get_baked_length())
 
-## Finely samples the loop's ellipse in angle (same track_center/radius_x/
-## radius_z shape as the old coarse `num_points` corners), then resamples by
-## arc length so consecutive returned points are ~dense_spacing apart
-## regardless of the ellipse's eccentricity. Grading and rail-curve height
-## both key off this dense set so the carved bed and the drawn curve agree
-## everywhere along the route, not just at a handful of widely-spaced corners.
-func _get_dense_route_points() -> Array:
-	var fine := []
+## Walks the loop's ellipse (same track_center/radius_x/radius_z shape as
+## before) at fine angular resolution, then keeps only the DISTINCT integer
+## block columns it passes through, in order, deduping consecutive repeats.
+## At this fine a sampling (2000 steps around a ~100-unit-circumference
+## loop, i.e. ~0.05 units of arc per step) consecutive kept columns are for
+## all practical purposes always lattice-adjacent -- the route is therefore
+## a connected chain of real block columns, not an arbitrary set of points,
+## which is what lets _build_track_tiles() treat every edge as "this column
+## to the next block over" rather than an arbitrary-length hop.
+func _get_route_columns() -> Array:
 	const FINE_STEPS := 2000
+	var cols: Array = []
 	for i in range(FINE_STEPS):
 		var t := (float(i) / float(FINE_STEPS)) * TAU
-		fine.append(Vector2(
-			track_center.x + cos(t) * radius_x,
-			track_center.y + sin(t) * radius_z
-		))
-	fine.append(fine[0])
+		var wx := track_center.x + cos(t) * radius_x
+		var wz := track_center.y + sin(t) * radius_z
+		var col := Vector2i(int(round(wx)), int(round(wz)))
+		if cols.is_empty() or cols[-1] != col:
+			cols.append(col)
+	# Loop closure: drop a duplicate-of-first tail (fine sampling can land
+	# back on the start column before i wraps) so the last->first edge isn't
+	# zero-length.
+	if cols.size() > 1 and cols[-1] == cols[0]:
+		cols.remove_at(cols.size() - 1)
+	return cols
 
-	var pts := [fine[0]]
-	var acc := 0.0
-	for i in range(1, fine.size()):
-		acc += fine[i].distance_to(fine[i - 1])
-		if acc >= dense_spacing:
-			pts.append(fine[i])
-			acc = 0.0
-	return pts
+## Same formula Chunk.gd uses to pick each column's topmost solid block --
+## queried directly from the noise instance, not by reading voxel_data, so
+## tile placement never depends on whether that column's chunk has finished
+## generating.
+func _terrain_top_block_y(gx: int, gz: int) -> int:
+	var n := _voxel_world.noise.get_noise_2d(gx, gz)
+	return int((n + 1.0) * 32.0) + 64
 
-func _surface_y(wx: float, wz: float) -> float:
-	var ix := int(round(wx))
-	var iz := int(round(wz))
-	var n := _voxel_world.noise.get_noise_2d(ix, iz)
-	var visual_height := int((n + 1.0) * 32.0) + 64
-	return float(visual_height + 1)  # top face of the topmost solid block
-
-## Computes a gently graded railbed profile along the dense route: raw
-## per-column terrain height, smoothed (circular moving average) to avoid
-## chasing every single-block noise wiggle, then slope-limited (symmetric
-## relaxation, so corrections split between neighbours and the loop's
-## closing seam converges cleanly too) so no two consecutive samples differ
-## by more than max_grade_per_block per block of travel. This is the target
-## surface both _carve_railbed() cuts/fills the terrain to and _build_curve()
-## draws the rails at.
-func _compute_graded_bed_heights(pts2d: Array) -> Array:
-	var n := pts2d.size()
-	var raw := []
-	for p in pts2d:
-		raw.append(_surface_y(p.x, p.y))
-
-	var dists := []
-	for i in range(n):
-		var j := (i + 1) % n
-		dists.append(max(pts2d[i].distance_to(pts2d[j]), 0.001))
-
-	var h := []
-	for i in range(n):
-		var acc := 0.0
-		var count := 0
-		for k in range(-HEIGHT_SMOOTH_RADIUS, HEIGHT_SMOOTH_RADIUS + 1):
-			acc += raw[(i + k + n) % n]
-			count += 1
-		h.append(acc / count)
-
-	for pass_i in range(n * 2):
-		var changed := false
-		for i in range(n):
-			var j := (i + 1) % n
-			var diff: float = h[j] - h[i]
-			var max_diff: float = max_grade_per_block * dists[i]
-			if diff > max_diff:
-				var excess := (diff - max_diff) * 0.5
-				h[i] += excess
-				h[j] -= excess
-				changed = true
-			elif diff < -max_diff:
-				var excess := (-diff - max_diff) * 0.5
-				h[i] -= excess
-				h[j] += excess
-				changed = true
-		if not changed:
-			break
-	return h
-
-## Carves the actual voxel terrain into a continuous graded strip under the
-## route: for every dense route point, stamps a bed_half_width_blocks-wide
-## strip (perpendicular to travel) into a world-column -> bed-surface-height
-## map (last writer wins on overlaps between neighbouring points on curves --
-## harmless since max_grade_per_block keeps neighbouring bed heights within a
-## block of each other anyway), then for each column fills solid ground from
-## bedrock+1 up to the bed (fills dips) and clears anything above the bed up
-## to BED_CLEAR_MARGIN blocks (cuts hills / removes trees poking into the
-## corridor). Edits are batched per chunk via Chunk.set_block_silent and
-## flushed with a single Chunk.generate_mesh() per touched chunk at the end.
-func _carve_railbed(pts2d: Array, bed_face_heights: Array) -> void:
-	var n := pts2d.size()
-	var columns := {}  # Vector2i world (x, z) -> int bed_face_y (first air block above the graded fill)
-	for i in range(n):
-		var p: Vector2 = pts2d[i]
-		var prev: Vector2 = pts2d[(i - 1 + n) % n]
-		var next: Vector2 = pts2d[(i + 1) % n]
-		var fwd := next - prev
-		if fwd.length() < 0.001:
-			fwd = Vector2(1, 0)
-		fwd = fwd.normalized()
-		var right := Vector2(-fwd.y, fwd.x)
-		var bed_face_y: int = bed_face_heights[i]
-		for off in range(-bed_half_width_blocks, bed_half_width_blocks + 1):
-			var wp := p + right * float(off)
-			var col := Vector2i(int(round(wp.x)), int(round(wp.y)))
-			columns[col] = bed_face_y
-
-	var touched_chunks := {}  # Vector2i chunk_pos -> Chunk
-	for col in columns.keys():
-		var bed_face_y: int = columns[col]
-		var top_solid_y := bed_face_y - 1
-		if top_solid_y < 1:
-			continue  # degenerate/too-low sample -- skip rather than eat bedrock
-		# Fill: solid ground from just above bedrock up through the bed surface.
-		for y in range(1, top_solid_y + 1):
-			_grade_set_voxel(col.x, y, col.y, BED_FILL_BLOCK, touched_chunks)
-		# Cut: clear anything poking up into the corridor above the bed.
-		for y in range(bed_face_y, bed_face_y + BED_CLEAR_MARGIN):
-			_grade_set_voxel(col.x, y, col.y, 0, touched_chunks)
-
-	for cpos in touched_chunks.keys():
-		touched_chunks[cpos].generate_mesh()
-
-func _grade_set_voxel(x: int, y: int, z: int, type: int, touched_chunks: Dictionary) -> void:
-	if y < 0 or y >= 256:
-		return
-	var cx := int(floor(float(x) / 16.0))
-	var cz := int(floor(float(z) / 16.0))
-	var cpos := Vector2i(cx, cz)
-	if not _voxel_world.chunks.has(cpos):
-		return
-	var chunk = _voxel_world.chunks[cpos]
-	if chunk == null:
-		return
-	var local_x := x - cx * 16
-	var local_z := z - cz * 16
-	chunk.set_block_silent(Vector3i(local_x, y, local_z), type)
-	touched_chunks[cpos] = chunk
-
-func _ensure_chunks_loaded(pts2d: Array) -> Array:
+func _ensure_chunks_loaded(route_cols: Array) -> void:
 	var min_x := INF
 	var max_x := -INF
 	var min_z := INF
 	var max_z := -INF
-	for p in pts2d:
-		min_x = min(min_x, p.x)
-		max_x = max(max_x, p.x)
-		min_z = min(min_z, p.y)
-		max_z = max(max_z, p.y)
+	for col in route_cols:
+		min_x = min(min_x, col.x)
+		max_x = max(max_x, col.x)
+		min_z = min(min_z, col.y)
+		max_z = max(max_z, col.y)
 	min_x -= chunk_margin_blocks
 	max_x += chunk_margin_blocks
 	min_z -= chunk_margin_blocks
@@ -291,161 +185,145 @@ func _ensure_chunks_loaded(pts2d: Array) -> Array:
 
 	var c0 := Vector2i(int(floor(min_x / 16.0)), int(floor(min_z / 16.0)))
 	var c1 := Vector2i(int(floor(max_x / 16.0)), int(floor(max_z / 16.0)))
-	var touched := []
 	for cx in range(c0.x, c1.x + 1):
 		for cz in range(c0.y, c1.y + 1):
 			var cpos := Vector2i(cx, cz)
-			touched.append(cpos)
 			if not _voxel_world.chunks.has(cpos):
 				_voxel_world.create_chunk(cpos)
-	return touched
 
-func _wait_for_route_chunks_ready(chunk_positions: Array) -> void:
-	var tries := 0
-	while not _all_route_chunks_ready(chunk_positions) and tries < 300:
-		await get_tree().process_frame
-		tries += 1
-	if not _all_route_chunks_ready(chunk_positions):
-		push_warning("[TrainTrackBuilder] some railbed chunks never finished generating -- railbed carving may be incomplete.")
-
-func _all_route_chunks_ready(chunk_positions: Array) -> bool:
-	for cpos in chunk_positions:
-		if not _voxel_world.chunks.has(cpos):
-			return false
-		var chunk = _voxel_world.chunks[cpos]
-		if chunk == null or chunk.mesh_instance == null or chunk.voxel_data.is_empty():
-			return false
-	return true
-
-func _build_curve(pts2d: Array, bed_face_heights: Array) -> Path3D:
-	var path := Path3D.new()
-	path.name = "RailPath"
-
-	# Rails sit at the graded bed surface (bed_face_heights, the same
-	# heights _carve_railbed() just cut/filled the ground to) plus
-	# rail_clearance -- not a re-sample of raw terrain -- so the curve
-	# matches the actual ground under it everywhere, not just at sample
-	# points.
-	var pts3d: Array = []
-	for i in range(pts2d.size()):
-		var p: Vector2 = pts2d[i]
-		var y: float = bed_face_heights[i] + rail_clearance
-		pts3d.append(Vector3(p.x, y, p.y))
-	# Close the loop explicitly (duplicate the first point at the end) so
-	# PathFollow3D's `loop = true` wraps seamlessly with no visible teleport.
-	pts3d.append(pts3d[0])
-
-	var n := pts3d.size()
-	var curve := Curve3D.new()
-	const TANGENT_SCALE := 0.25
-	for i in range(n):
-		var prev: Vector3 = pts3d[(i - 1 + n) % n]
-		var next: Vector3 = pts3d[(i + 1) % n]
-		var tangent := (next - prev) * TANGENT_SCALE
-		# Last point mirrors the first point's tangent for a clean close.
-		if i == n - 1:
-			var first_prev: Vector3 = pts3d[n - 2]
-			var first_next: Vector3 = pts3d[1]
-			tangent = (first_next - first_prev) * TANGENT_SCALE
-		curve.add_point(pts3d[i], -tangent, tangent)
-
-	path.curve = curve
-	return path
-
-func _build_rails(path: Path3D) -> void:
-	var bed := CSGPolygon3D.new()
-	bed.name = "Ballast"
-	bed.mode = CSGPolygon3D.MODE_PATH
-	bed.path_interval_type = CSGPolygon3D.PATH_INTERVAL_SUBDIVIDE
-	# 1.0 (was 2.0, tuned for the old 8-corner curve): the curve now has a
-	# point roughly every dense_spacing (~1 block), so a coarser extrusion
-	# interval would under-sample the (now much more detailed) graded profile.
-	bed.path_interval = 1.0
-	bed.path_local = false
-	# PATH_ROTATION_PATH (not the PATH_FOLLOW default): rotate to follow the
-	# curve's yaw only, never bank/tilt with elevation changes. Keeping the
-	# ballast/rails level (local up == world up) is what lets the
-	# locomotive's own vertical offset (see _build_locomotive, also pinned to
-	# world up via ROTATION_Y) land exactly on the rail head instead of
-	# drifting apart on the sloped stretches of this terrain-following loop.
-	bed.path_rotation = CSGPolygon3D.PATH_ROTATION_PATH
-	bed.polygon = PackedVector2Array([
-		Vector2(-rail_gauge - 0.9, -0.25),
-		Vector2(-rail_gauge - 0.4,  0.0),
-		Vector2( rail_gauge + 0.4,  0.0),
-		Vector2( rail_gauge + 0.9, -0.25),
-	])
-	var bed_mat := StandardMaterial3D.new()
-	bed_mat.albedo_color = Color(0.32, 0.28, 0.22)
-	bed.material = bed_mat
-	path.add_child(bed)
-	bed.path_node = NodePath("..")
-
-	_add_rail(path, -rail_gauge, "LeftRail")
-	_add_rail(path, rail_gauge, "RightRail")
-
-func _add_rail(path: Path3D, offset_x: float, r_name: String) -> void:
-	var poly := CSGPolygon3D.new()
-	poly.name = r_name
-	poly.mode = CSGPolygon3D.MODE_PATH
-	poly.path_interval_type = CSGPolygon3D.PATH_INTERVAL_SUBDIVIDE
-	poly.path_interval = 1.0  # see _build_rails comment on the matching Ballast change
-	poly.path_local = false
-	poly.path_rotation = CSGPolygon3D.PATH_ROTATION_PATH  # see _build_rails comment
-	poly.polygon = PackedVector2Array([
-		Vector2(offset_x - 0.08, 0.0),
-		Vector2(offset_x + 0.08, 0.0),
-		Vector2(offset_x + 0.08, RAIL_HEAD_HEIGHT),
-		Vector2(offset_x - 0.08, RAIL_HEAD_HEIGHT),
-	])
+## Builds the VISIBLE block-grid rail tiles: one oriented rail-pair-plus-tie
+## segment per route edge (column i -> column i+1), sized to the actual gap
+## between the two sampled block tops. When |height delta| is exactly one
+## block this is a single ~45 degree ramp tile, as spec'd. When natural
+## terrain occasionally steps more than one block between adjacent sampled
+## columns (real fbm noise isn't perfectly graded), the edge is split into
+## |delta| consecutive 1-block-rise sub-segments instead of one oversteep
+## ramp -- still block-anchored at every sub-step, still zero terrain
+## writes, just a steeper little staircase for that rare edge. On the
+## overwhelmingly common flat/one-block-step edges this fallback is a no-op
+## (steps == 1, i.e. exactly the tile described in the spec).
+func _build_track_tiles(parent: Node3D, route_cols: Array, heights: Array) -> void:
+	var rail_mesh := BoxMesh.new()
+	rail_mesh.size = Vector3.ONE
 	var rail_mat := StandardMaterial3D.new()
 	rail_mat.albedo_color = Color(0.55, 0.55, 0.6)
 	rail_mat.metallic = 0.8
 	rail_mat.roughness = 0.35
-	poly.material = rail_mat
-	path.add_child(poly)
-	poly.path_node = NodePath("..")
-
-func _build_sleepers(path: Path3D) -> void:
-	var curve := path.curve
-	var total_len := curve.get_baked_length()
-	if total_len <= 0.0:
-		return
-
-	var sleepers := Node3D.new()
-	sleepers.name = "Sleepers"
-	path.add_child(sleepers)
 
 	var tie_mesh := BoxMesh.new()
-	tie_mesh.size = Vector3(rail_gauge * 2.0 + 0.6, 0.12, 0.35)
+	tie_mesh.size = Vector3.ONE
 	var tie_mat := StandardMaterial3D.new()
 	tie_mat.albedo_color = Color(0.32, 0.2, 0.12)
 
-	var d := 0.0
-	while d < total_len:
-		var pos := curve.sample_baked(d)
-		var ahead_d: float = min(d + 0.5, total_len)
-		var behind_d: float = max(d - 0.5, 0.0)
-		var forward: Vector3 = (curve.sample_baked(ahead_d) - curve.sample_baked(behind_d))
-		if forward.length() < 0.001:
-			forward = Vector3.FORWARD
-		forward = forward.normalized()
+	var rail_xforms: Array = []
+	var tie_xforms: Array = []
 
-		var tie := MeshInstance3D.new()
-		tie.mesh = tie_mesh
-		tie.material_override = tie_mat
-		sleepers.add_child(tie)
-		tie.global_position = pos + Vector3.UP * -0.06
-		# Orient tie's local X (its long axis) across the rails, i.e.
-		# perpendicular to the direction of travel.
-		var right := forward.cross(Vector3.UP)
-		if right.length() < 0.001:
-			right = Vector3.RIGHT
-		right = right.normalized()
-		var up := right.cross(forward).normalized()
-		tie.global_transform.basis = Basis(right, up, forward)
+	var n := route_cols.size()
+	for i in range(n):
+		var j := (i + 1) % n
+		var col_a: Vector2i = route_cols[i]
+		var col_b: Vector2i = route_cols[j]
+		var h_a: int = heights[i]
+		var h_b: int = heights[j]
+		var delta := h_b - h_a
+		var steps: int = maxi(1, absi(delta))
+		var sign_h := 0 if delta == 0 else (1 if delta > 0 else -1)
 
-		d += sleeper_spacing
+		for s in range(steps):
+			var t0 := float(s) / float(steps)
+			var t1 := float(s + 1) / float(steps)
+			var xz0 := Vector2(col_a).lerp(Vector2(col_b), t0)
+			var xz1 := Vector2(col_a).lerp(Vector2(col_b), t1)
+			var y0 := float(h_a + sign_h * s) + 1.0 + rail_clearance
+			var y1 := float(h_a + sign_h * (s + 1)) + 1.0 + rail_clearance
+			var p0 := Vector3(xz0.x, y0, xz0.y)
+			var p1 := Vector3(xz1.x, y1, xz1.y)
+			_append_segment_transforms(p0, p1, rail_xforms, tie_xforms)
+
+	_spawn_multimesh(parent, "Rails", rail_mesh, rail_mat, rail_xforms)
+	_spawn_multimesh(parent, "Sleepers", tie_mesh, tie_mat, tie_xforms)
+
+## Appends the oriented-box transforms (left rail, right rail, one tie) for
+## a single flat-or-sloped segment from p0 to p1.
+func _append_segment_transforms(p0: Vector3, p1: Vector3, rail_xforms: Array, tie_xforms: Array) -> void:
+	var seg := p1 - p0
+	var seg_len := seg.length()
+	if seg_len < 0.001:
+		return
+	var forward := seg / seg_len
+	var right := forward.cross(Vector3.UP)
+	if right.length() < 0.001:
+		right = Vector3.RIGHT
+	right = right.normalized()
+	var up := right.cross(forward).normalized()
+	var mid := (p0 + p1) * 0.5
+
+	for offset: float in [-rail_gauge, rail_gauge]:
+		var rail_center: Vector3 = mid + right * offset + up * (RAIL_HEAD_HEIGHT * 0.5)
+		var basis := Basis(right * RAIL_WIDTH, up * RAIL_HEAD_HEIGHT, forward * seg_len)
+		rail_xforms.append(Transform3D(basis, rail_center))
+
+	var tie_width := rail_gauge * 2.0 + 0.6
+	var tie_center := mid - up * (TIE_HEIGHT * 0.5)
+	var tie_basis := Basis(right * tie_width, up * TIE_HEIGHT, forward * max(seg_len, TIE_THICKNESS))
+	tie_xforms.append(Transform3D(tie_basis, tie_center))
+
+func _spawn_multimesh(parent: Node3D, node_name: String, mesh: Mesh, mat: Material, xforms: Array) -> void:
+	if xforms.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = xforms.size()
+	for i in range(xforms.size()):
+		mm.set_instance_transform(i, xforms[i])
+
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = node_name
+	mmi.multimesh = mm
+	mmi.material_override = mat
+	parent.add_child(mmi)
+
+## Builds a DENSE point sequence along the same route/heights (see class
+## header for why this must be denser than the visible tiles), then a
+## Curve3D through those points with Catmull-Rom-ish tangents so
+## PathFollow3D/TrainMover glide continuously instead of hopping tile to
+## tile. Within one route edge the sub-points are exactly collinear (Y is
+## linearly interpolated), so Bezier smoothing there is a no-op; smoothing
+## only rounds off the corners at edge boundaries, where the sub-segment
+## height (1/LOCO_PATH_SUBDIV of a block) is small enough that the rounding
+## doesn't visibly lift the loco off the actual rail tiles.
+func _build_loco_curve(route_cols: Array, heights: Array) -> Path3D:
+	var pts: Array = []
+	var n := route_cols.size()
+	for i in range(n):
+		var j := (i + 1) % n
+		var col_a: Vector2i = route_cols[i]
+		var col_b: Vector2i = route_cols[j]
+		var h_a: float = heights[i]
+		var h_b: float = heights[j]
+		for s in range(LOCO_PATH_SUBDIV):
+			var t := float(s) / float(LOCO_PATH_SUBDIV)
+			var xz := Vector2(col_a).lerp(Vector2(col_b), t)
+			var y: float = lerpf(h_a, h_b, t) + 1.0 + rail_clearance
+			pts.append(Vector3(xz.x, y, xz.y))
+	pts.append(pts[0])  # close the loop explicitly for a seamless PathFollow3D wrap
+
+	var path := Path3D.new()
+	path.name = "RailPath"
+	var curve := Curve3D.new()
+	var m := pts.size()
+	for i in range(m):
+		var prev: Vector3 = pts[(i - 1 + m) % m]
+		var next: Vector3 = pts[(i + 1) % m]
+		var tangent := (next - prev) * TANGENT_SCALE
+		if i == m - 1:
+			var first_prev: Vector3 = pts[m - 2]
+			var first_next: Vector3 = pts[1]
+			tangent = (first_next - first_prev) * TANGENT_SCALE
+		curve.add_point(pts[i], -tangent, tangent)
+	path.curve = curve
+	return path
 
 func _spawn_train(path: Path3D) -> PathFollow3D:
 	var pf := PathFollow3D.new()
@@ -453,8 +331,7 @@ func _spawn_train(path: Path3D) -> PathFollow3D:
 	pf.loop = true
 	# ROTATION_Y (yaw only, not ROTATION_ORIENTED): keeps the loco's local up
 	# pinned to world up so it never banks/tilts on this terrain-following
-	# loop's slopes -- see _build_rails for the matching rail-side fix. Yaw
-	# still turns the loco to face the direction of travel around the loop.
+	# loop's slopes.
 	pf.rotation_mode = PathFollow3D.ROTATION_Y
 	path.add_child(pf)
 
@@ -474,8 +351,7 @@ func _build_locomotive(parent: Node3D) -> void:
 	# Wheel bottom must land exactly on the rail HEAD (top of the rail
 	# cross-section, RAIL_HEAD_HEIGHT above the curve/PathFollow3D's own Y),
 	# not on the curve itself -- the curve Y is the rail BASE, and the rails
-	# extrude RAIL_HEAD_HEIGHT above that. Missing this offset is what made
-	# the loco visibly float above the rails.
+	# extrude RAIL_HEAD_HEIGHT above that.
 	var wheel_r := 0.45
 	var wheel_center_y := RAIL_HEAD_HEIGHT + wheel_r
 	var wheel_mesh := CylinderMesh.new()
@@ -531,13 +407,11 @@ func _build_locomotive(parent: Node3D) -> void:
 	funnel.position = Vector3(0, body_top + funnel_mesh.height * 0.5, -1.8)
 	loco.add_child(funnel)
 
-func _add_demo_camera(path: Path3D) -> void:
-	var pts := path.curve.get_baked_points()
-	if pts.is_empty():
-		return
-	var aabb := AABB(pts[0], Vector3.ZERO)
-	for p in pts:
-		aabb = aabb.expand(p)
+func _add_demo_camera(route_cols: Array, heights: Array) -> void:
+	var aabb := AABB(Vector3(route_cols[0].x, heights[0], route_cols[0].y), Vector3.ZERO)
+	for i in range(route_cols.size()):
+		var col: Vector2i = route_cols[i]
+		aabb = aabb.expand(Vector3(col.x, heights[i], col.y))
 	var center := aabb.get_center()
 	var span: float = max(aabb.size.x, aabb.size.z)
 
