@@ -392,15 +392,11 @@ func manual_interaction_check():
 	
 	if not left and not right: return
 
-	if not raycast.is_colliding():
-		print("[DBG_INTERACT] no raycast hit, cam_pitch_deg=", rad_to_deg(camera.rotation.x))
-
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
 		var point = raycast.get_collision_point()
 		var normal = raycast.get_collision_normal()
 		var voxel_world = get_node_or_null("/root/World/VoxelWorld")
-		print("[DBG_INTERACT] hit=", collider, " is_static=", collider is StaticBody3D, " voxel_world=", voxel_world)
 
 		# Left Click: Destroy
 		if left:
