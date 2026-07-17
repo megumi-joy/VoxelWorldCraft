@@ -10,6 +10,11 @@ extends Node3D
 var angle: float = 0.0
 
 func _ready():
+	# Re-apply persisted graphics settings to this scene's WorldEnvironment /
+	# DirectionalLight3D / VoxelWorld (see World.gd's matching call for why:
+	# these are fresh per-scene nodes, not global state).
+	GraphicsSettings.apply_scene_settings()
+
 	# Ensure VoxelWorld generates chunks around center
 	if has_node("VoxelWorld"):
 		var vw = $VoxelWorld
