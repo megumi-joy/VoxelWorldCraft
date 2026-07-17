@@ -68,6 +68,7 @@ visible = false
 visible = false
 
 [node name="SettingsPanel" parent="HUD" instance=ExtResource("10_settings")]
+visible = false
 
 [node name="FieldJournalUI" parent="HUD" instance=ExtResource("11_journal")]
 visible = false
