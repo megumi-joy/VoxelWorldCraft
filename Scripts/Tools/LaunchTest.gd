@@ -22,3 +22,11 @@ func _ready():
 		driver.name = "MovementDemoDriver"
 		var tree := Engine.get_main_loop() as SceneTree
 		tree.root.add_child(driver)
+
+	# Wave 2 verification/showcase: minerals + Field Journal + discovery,
+	# see Scripts/Testing/Wave2DemoDriver.gd for what it exercises.
+	if OS.get_cmdline_user_args().has("--wave2-demo"):
+		var wave2_driver = load("res://Scripts/Testing/Wave2DemoDriver.gd").new()
+		wave2_driver.name = "Wave2DemoDriver"
+		var tree2 := Engine.get_main_loop() as SceneTree
+		tree2.root.add_child(wave2_driver)

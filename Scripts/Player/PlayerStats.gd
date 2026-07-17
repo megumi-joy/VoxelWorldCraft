@@ -5,6 +5,28 @@ signal health_changed(value, max_value)
 signal hunger_changed(value, max_value)
 signal died
 
+# Field Journal discovery: a small persistent-for-the-session set of codex
+# species keys the player has found (see CodexDatabase.gd for the entry
+# data). Session-persistent by design -- not written to SaveSystem -- once
+# discovered, an entry stays unlocked for the rest of this play session.
+signal species_discovered(species_key, entry)
+var discovered_species: Dictionary = {} # species_key -> true
+
+# Called whenever the player picks up an item (see Inventory.gd's
+# item_picked_up signal, wired up in Player.gd). If that item id is the
+# discovery trigger for a codex species that hasn't been found yet, unlock
+# it and notify listeners (Player.gd shows a toast; FieldJournalUI
+# re-renders next time it's opened).
+func discover_item(item_id: int) -> void:
+	var species_key: String = CodexDatabase.get_species_for_item(item_id)
+	if species_key == "" or discovered_species.has(species_key):
+		return
+	discovered_species[species_key] = true
+	species_discovered.emit(species_key, CodexDatabase.get_entry(species_key))
+
+func is_discovered(species_key: String) -> bool:
+	return discovered_species.has(species_key)
+
 @export var max_health: float = 100.0
 @export var max_hunger: float = 100.0
 @export var hunger_decay_rate: float = 0.5 # Units per second

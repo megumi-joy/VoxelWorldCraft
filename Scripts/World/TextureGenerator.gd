@@ -92,13 +92,39 @@ func _ready():
 	# We have 100+ elements.
 	# We can't fit them all unique. We'll use a generic "Mineral" texture and tint it in shader?
 	# Or just generate a few common ones here.
-	# Gold (Let's put at 5,0)
+	# Gold (Let's put at 5,0) -- pre-existing placeholder, left as-is and
+	# unreferenced by any block (see idx 3 below for the real Gold Ore block).
 	generate_texture(image, 0, 5, Color(0.5, 0.5, 0.5), 0.1)
 	add_spots(image, 0, 5, Color(1.0, 0.8, 0.0), 10)
-	# Diamond/Crystal
+	# Diamond/Crystal -- pre-existing placeholder, also unreferenced.
 	generate_texture(image, 1, 5, Color(0.5, 0.5, 0.5), 0.1)
 	add_spots(image, 1, 5, Color(0.2, 0.9, 1.0), 8)
-	
+
+	# --- Row 5 (cont.): Wave 2 mineral ore blocks (IDs 80-84, see
+	# ItemDatabase.gd / Chunk.gd's ORE_TABLE / CodexDatabase.gd) ---
+	# Copper Ore (ID 80): grey host rock + warm orange-copper flecks and a
+	# few oxidized teal (verdigris) spots.
+	generate_texture(image, 2, 5, Color(0.5, 0.5, 0.5), 0.1)
+	add_spots(image, 2, 5, Color(0.85, 0.45, 0.15), 10)
+	add_spots(image, 2, 5, Color(0.25, 0.65, 0.55), 6)
+	# Gold Ore (ID 81): dark host rock + dense bright-gold flecks.
+	generate_texture(image, 3, 5, Color(0.45, 0.45, 0.48), 0.1)
+	add_spots(image, 3, 5, Color(1.0, 0.84, 0.0), 14)
+	# Quartz (ID 82): near-white crystalline base + faceted vertical streaks
+	# and a few bright sparkle points.
+	generate_texture(image, 4, 5, Color(0.88, 0.88, 0.92), 0.12)
+	add_lines(image, 4, 5, Color(0.7, 0.7, 0.78), false)
+	add_spots(image, 4, 5, Color(1.0, 1.0, 1.0), 6)
+	# Hematite (ID 83): dark red-brown iron-oxide base + metallic black-grey
+	# luster flecks.
+	generate_texture(image, 5, 5, Color(0.35, 0.12, 0.1), 0.15)
+	add_spots(image, 5, 5, Color(0.15, 0.12, 0.12), 10)
+	# Malachite Ore (ID 84): grey host rock + vivid green banded spots
+	# (copper carbonate's characteristic banding).
+	generate_texture(image, 6, 5, Color(0.5, 0.5, 0.5), 0.1)
+	add_lines(image, 6, 5, Color(0.03, 0.35, 0.15))
+	add_spots(image, 6, 5, Color(0.05, 0.55, 0.25), 14)
+
 	# Save and Apply
 	var texture = ImageTexture.create_from_image(image)
 	var mat = StandardMaterial3D.new()

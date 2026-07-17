@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://furnace_ui" path="res://Scenes/FurnaceUI.tscn" id="7_furnace"]
 [ext_resource type="PackedScene" uid="uid://trading_ui" path="res://Scenes/TradingUI.tscn" id="8_trading"]
 [ext_resource type="PackedScene" uid="uid://hud_overlay" path="res://Scenes/HUD.tscn" id="9_hud"]
+[ext_resource type="PackedScene" uid="uid://field_journal_ui" path="res://Scenes/FieldJournalUI.tscn" id="10_journal"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.5
@@ -62,4 +63,7 @@ visible = false
 visible = false
 
 [node name="TradingUI" parent="HUD" instance=ExtResource("8_trading")]
+visible = false
+
+[node name="FieldJournalUI" parent="HUD" instance=ExtResource("10_journal")]
 visible = false

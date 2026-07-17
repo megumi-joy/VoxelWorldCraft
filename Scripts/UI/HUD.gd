@@ -39,20 +39,31 @@ func _style_panel() -> void:
 	sb.set_border_width_all(5)
 	sb.border_color = COL_PANEL_BORDER
 	sb.shadow_color = Color(0, 0, 0, 0.35)
-	sb.shadow_size = 6
-	sb.shadow_offset = Vector2(0, 4)
+	sb.shadow_size = 5
+	sb.shadow_offset = Vector2(0, 3)
 	stats_panel.add_theme_stylebox_override("panel", sb)
 
 func _style_bar(bar: ProgressBar, bg: Color, fill: Color) -> void:
 	var bg_style = StyleBoxFlat.new()
 	bg_style.bg_color = bg
-	bg_style.set_corner_radius_all(12)
+	bg_style.set_corner_radius_all(14)
 	bg_style.set_border_width_all(3)
 	bg_style.border_color = COL_PANEL_BORDER
 
+	# NOTE: rounding the fill's TRAILING (right) corners produced a visible
+	# "bite"/notch out of the bar at partial values -- Godot draws the fill
+	# stylebox clipped to exactly `width * ratio`, so a rounded right edge
+	# exposes a crescent of background color mid-bar instead of a clean cut.
+	# Only round the leading (left) corners, which always sit flush against
+	# the bg's rounded left edge; the right edge stays a flat cut at any
+	# fill ratio (the only place it'd show is a few px of the bg's own
+	# rounded corner peeking out at exactly 100%, which is unnoticeable).
 	var fill_style = StyleBoxFlat.new()
 	fill_style.bg_color = fill
-	fill_style.set_corner_radius_all(10)
+	fill_style.corner_radius_top_left = 11
+	fill_style.corner_radius_bottom_left = 11
+	fill_style.corner_radius_top_right = 0
+	fill_style.corner_radius_bottom_right = 0
 
 	bar.add_theme_stylebox_override("background", bg_style)
 	bar.add_theme_stylebox_override("fill", fill_style)
@@ -60,10 +71,10 @@ func _style_bar(bar: ProgressBar, bg: Color, fill: Color) -> void:
 	bar.max_value = 100.0
 
 func _style_message_label() -> void:
-	message_label.add_theme_font_size_override("font_size", 26)
+	message_label.add_theme_font_size_override("font_size", 20)
 	message_label.add_theme_color_override("font_color", Color(1, 1, 1))
 	message_label.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02))
-	message_label.add_theme_constant_override("outline_size", 6)
+	message_label.add_theme_constant_override("outline_size", 5)
 	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
@@ -80,7 +91,7 @@ func update_ai_button(enabled: bool) -> void:
 	style.set_border_width_all(4)
 	style.border_color = COL_PANEL_BORDER
 	style.shadow_color = Color(0, 0, 0, 0.3)
-	style.shadow_size = 5
+	style.shadow_size = 4
 	style.shadow_offset = Vector2(0, 3)
 	if enabled:
 		ai_button.text = "AI ACTIVE"
@@ -93,7 +104,7 @@ func update_ai_button(enabled: bool) -> void:
 	ai_button.add_theme_stylebox_override("hover", style)
 	ai_button.add_theme_stylebox_override("pressed", style)
 	ai_button.add_theme_stylebox_override("focus", style)
-	ai_button.add_theme_font_size_override("font_size", 18)
+	ai_button.add_theme_font_size_override("font_size", 20)
 	ai_button.add_theme_color_override("font_color", Color(1, 1, 1))
 	ai_button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
 	ai_button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
