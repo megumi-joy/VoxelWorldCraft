@@ -20,6 +20,7 @@ const COL_AI_OFF := Color(0.30, 0.55, 0.95)
 @onready var hunger_bar: ProgressBar = $StatsPanel/Margin/VBox/HungerRow/HungerBar
 @onready var stats_panel: PanelContainer = $StatsPanel
 @onready var ai_button: Button = $AIButton
+@onready var settings_button: Button = $SettingsButton
 @onready var message_label: Label = $MessageLabel
 @onready var crosshair: Control = $Crosshair
 
@@ -29,7 +30,9 @@ func _ready():
 	_style_bar(health_bar, COL_HEALTH_BG, COL_HEALTH_FILL)
 	_style_bar(hunger_bar, COL_HUNGER_BG, COL_HUNGER_FILL)
 	_style_message_label()
+	_style_settings_button()
 	ai_button.pressed.connect(_on_ai_button_pressed)
+	settings_button.pressed.connect(_on_settings_button_pressed)
 	update_ai_button(false)
 
 func _style_panel() -> void:
@@ -71,6 +74,33 @@ func _on_ai_button_pressed() -> void:
 	var player = get_tree().get_first_node_in_group("player")
 	if player and player.has_method("toggle_ai"):
 		player.toggle_ai()
+
+# Settings panel (Scenes/SettingsPanel.tscn) is a sibling under the same
+# "HUD" CanvasLayer in Player.tscn, not a child of this node -- reached via
+# its group rather than a hardcoded relative path, same lookup style
+# HotbarUI.gd/AIButton already use for finding the player.
+func _on_settings_button_pressed() -> void:
+	var panel = get_tree().get_first_node_in_group("settings_panel")
+	if panel and panel.has_method("toggle"):
+		panel.toggle()
+
+func _style_settings_button() -> void:
+	var style = StyleBoxFlat.new()
+	style.bg_color = COL_PANEL_BG
+	style.set_corner_radius_all(16)
+	style.set_border_width_all(4)
+	style.border_color = COL_PANEL_BORDER
+	style.shadow_color = Color(0, 0, 0, 0.3)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 3)
+	settings_button.add_theme_stylebox_override("normal", style)
+	settings_button.add_theme_stylebox_override("hover", style)
+	settings_button.add_theme_stylebox_override("pressed", style)
+	settings_button.add_theme_stylebox_override("focus", style)
+	settings_button.add_theme_font_size_override("font_size", 22)
+	settings_button.add_theme_color_override("font_color", COL_PANEL_BORDER)
+	settings_button.add_theme_color_override("font_hover_color", COL_PANEL_BORDER)
+	settings_button.add_theme_color_override("font_pressed_color", COL_PANEL_BORDER)
 
 func update_ai_button(enabled: bool) -> void:
 	if not ai_button:
