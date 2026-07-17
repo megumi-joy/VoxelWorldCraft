@@ -263,9 +263,14 @@ func _append_segment_transforms(p0: Vector3, p1: Vector3, rail_xforms: Array, ti
 		var basis := Basis(right * RAIL_WIDTH, up * RAIL_HEAD_HEIGHT, forward * seg_len)
 		rail_xforms.append(Transform3D(basis, rail_center))
 
+	# Fixed TIE_THICKNESS along the direction of travel (NOT scaled to
+	# seg_len, which is ~1 unit -- scaling to seg_len was stretching each
+	# tie to the full length of its segment, so consecutive ties butted
+	# up against each other into a continuous deck instead of reading as
+	# discrete sleepers with rail visible between them).
 	var tie_width := rail_gauge * 2.0 + 0.6
 	var tie_center := mid - up * (TIE_HEIGHT * 0.5)
-	var tie_basis := Basis(right * tie_width, up * TIE_HEIGHT, forward * max(seg_len, TIE_THICKNESS))
+	var tie_basis := Basis(right * tie_width, up * TIE_HEIGHT, forward * TIE_THICKNESS)
 	tie_xforms.append(Transform3D(tie_basis, tie_center))
 
 func _spawn_multimesh(parent: Node3D, node_name: String, mesh: Mesh, mat: Material, xforms: Array) -> void:
