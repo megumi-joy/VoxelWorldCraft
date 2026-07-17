@@ -13,6 +13,10 @@ enum ItemType {BLOCK, TOOL, RESOURCE, CONSUMABLE}
 # For blocks
 @export var block_id: int = 0
 
+# For tools: matches ItemDatabase.get_block_category(block_type), e.g.
+# "pickaxe" / "axe" / "shovel". Empty string = not a mining tool (sword, hoe).
+@export var tool_type: String = ""
+
 # Stats
 @export var damage_value: float = 0.0
 @export var nutrition_value: float = 0.0

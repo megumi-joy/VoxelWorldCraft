@@ -123,13 +123,32 @@ func _ready():
 	bread.nutrition_value = 30.0
 	items[22] = bread
 	
+	# ID 23: Sticks (Planks -> Sticks, used as a crafting ingredient)
+	var sticks = item_data_type.new()
+	sticks.id = 23
+	sticks.name = "Sticks"
+	sticks.type = item_data_type.ItemType.RESOURCE
+	items[23] = sticks
+
 	# ID 30-33: Wooden Tools
+	# NOTE: this dict used to be built and then never actually turned into
+	# ItemData entries below -- items 30-33 didn't exist in `items` at all,
+	# so ItemDatabase.get_item(30..33) always returned null and any tool
+	# logic keyed off it (Player.gd break-speed, Hoe check) silently no-opped.
 	var tools_data_local = {
-		30: ["Wooden Pickaxe", 2.0],
-		31: ["Wooden Shovel", 2.0],
-		32: ["Wooden Axe", 2.0],
-		33: ["Wooden Hoe", 1.0]
+		30: ["Wooden Pickaxe", "pickaxe"],
+		31: ["Wooden Shovel", "shovel"],
+		32: ["Wooden Axe", "axe"],
+		33: ["Wooden Hoe", "hoe"]
 	}
+	for tid in tools_data_local:
+		var tool_item = item_data_type.new()
+		tool_item.id = tid
+		tool_item.name = tools_data_local[tid][0]
+		tool_item.type = item_data_type.ItemType.TOOL
+		tool_item.tool_type = tools_data_local[tid][1]
+		tool_item.stackable = false
+		items[tid] = tool_item
 	# Nature & Fluids
 	var nature_items = {
 		40: ["Water", item_data_type.ItemType.BLOCK, 40],
@@ -219,3 +238,31 @@ func get_item(id: int):
 	if items.has(id):
 		return items[id]
 	return null
+
+# Voxel block_type -> mining category ("pickaxe" / "axe" / "shovel").
+# Used by Player.gd to decide block-break speed for the currently held tool.
+# Blocks not listed here (flowers, leaves, water, ores/blocks not covered
+# below, ...) are left at the default break speed regardless of held item.
+# A couple of ids are listed twice on purpose: world terrain generation
+# (Chunk.gd) writes raw block ids 42/43 for Sand/Snow directly, while
+# block-placement from the Sand/Snow *items* goes through their declared
+# block_id (16/15) -- both need to resolve to "shovel".
+const BLOCK_TOOL_CATEGORY = {
+	3: "pickaxe",  # Stone
+	5: "pickaxe",  # Coal Ore
+	6: "pickaxe",  # Iron Ore
+	4: "axe",      # Wood (Oak Log)
+	13: "axe",     # Planks
+	48: "axe",     # Birch Wood
+	49: "axe",     # Pine Wood
+	1: "shovel",   # Dirt
+	2: "shovel",   # Grass
+	42: "shovel",  # Sand (as generated in terrain)
+	16: "shovel",  # Sand (item.block_id)
+	43: "shovel",  # Snow (as generated in terrain)
+	15: "shovel",  # Snow (item.block_id)
+	14: "shovel",  # Farmland
+}
+
+func get_block_category(block_type: int) -> String:
+	return BLOCK_TOOL_CATEGORY.get(block_type, "")

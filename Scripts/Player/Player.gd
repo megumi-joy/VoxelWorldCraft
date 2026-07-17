@@ -14,6 +14,7 @@ var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var stats = $PlayerStats # Ensure this matches Scene tree
 
 @onready var hotbar_ui = $HUD/HotbarUI
+@onready var inventory = get_node_or_null("Inventory")
 var selected_block_id: int = 1 # Default Dirt
 
 func _ready():
@@ -119,6 +120,7 @@ func setup_nodes():
 	var inv = load("res://Scripts/UI/Inventory.gd").new()
 	inv.name = "Inventory"
 	add_child(inv)
+	inventory = inv
 	
 	# Create basic HUD if missing
 	if not has_node("HUD"):
@@ -215,25 +217,19 @@ func manual_interaction_check():
 
 		# Left Click: Destroy
 		if left:
-			var item = ItemDatabase.get_item(selected_block_id)
-			var break_speed = 0.2
-			if item:
-				if item.name.contains("Pickaxe") and collider is StaticBody3D: # Simple check
-					break_speed = 0.1
-				elif item.name.contains("Axe") and collider is StaticBody3D:
-					break_speed = 0.1
-				
 			if collider is StaticBody3D and voxel_world:
 				var block_pos = point - normal * 0.1
+				var block_type = get_block_at(voxel_world, block_pos)
+				var break_speed = get_break_speed(selected_block_id, block_type)
 				# Harvest: breaking a Berry Bush yields Berries (food) into the inventory.
-				var broken_type = get_block_at(voxel_world, block_pos)
-				if broken_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
+				if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
 					var harvest_inv = get_node_or_null("Inventory")
 					if harvest_inv: harvest_inv.add_item(70, 1) # Berries
 					show_message("Harvested Berries")
 				voxel_world.set_voxel.rpc(block_pos, 0)
 				await get_tree().create_timer(break_speed).timeout
 			elif collider.has_method("take_damage"):
+				var item = ItemDatabase.get_item(selected_block_id)
 				var dmg = 10.0
 				if item: dmg += item.damage_value
 				collider.take_damage(dmg)
@@ -291,8 +287,24 @@ func manual_interaction_check():
 				
 			# 4. Normal Block Placement
 			if item and item.type == 0: # ItemType.BLOCK
+				# Consume from inventory -- previously placement ignored the
+				# inventory entirely and just used the cached hotbar id, so
+				# blocks were placeable infinitely without ever depleting the
+				# stack. If there's no inventory wired up (e.g. a bare Player
+				# node in a stripped-down test scene), fall back to the old
+				# permissive behavior rather than blocking placement outright.
+				if inventory and not inventory.remove_item(selected_block_id, 1):
+					show_message("Out of " + item.name)
+					return
+
 				var place_pos = point + normal * 0.1
-				voxel_world.set_voxel.rpc(place_pos, selected_block_id)
+				# Use the item's declared block_id, not the item id itself --
+				# most items are 1:1 (Dirt item 1 -> block 1) but a few reuse
+				# ids (Sand item 42 -> block 16, Snow item 43 -> block 15);
+				# placing by item id alone would silently place the wrong
+				# block for those.
+				var place_block_id = item.block_id if item.block_id > 0 else selected_block_id
+				voxel_world.set_voxel.rpc(place_pos, place_block_id)
 				await get_tree().create_timer(0.2).timeout
 
 func toggle_ai():
@@ -328,6 +340,27 @@ func process_ai(delta):
 	# Rotate head slowly
 	head.rotate_y(delta * 0.5)
 
+
+# Uncategorized blocks (flowers, leaves, ores without a category, decor, ...)
+# always break at the flat default speed, unaffected by whatever is held --
+# this matches
+# the speed the game shipped with before tools existed. Blocks that DO have a
+# mining category (stone/ore -> pickaxe, wood/planks -> axe, dirt/sand ->
+# shovel, see ItemDatabase.BLOCK_TOOL_CATEGORY) break fast with the matching
+# tool equipped and slow otherwise (bare hands or the wrong tool).
+const BREAK_SPEED_DEFAULT = 0.2
+const BREAK_SPEED_WITH_TOOL = 0.1
+const BREAK_SPEED_WITHOUT_TOOL = 0.5
+
+func get_break_speed(held_item_id: int, block_type: int) -> float:
+	var category = ItemDatabase.get_block_category(block_type)
+	if category == "":
+		return BREAK_SPEED_DEFAULT
+
+	var item = ItemDatabase.get_item(held_item_id)
+	if item and item.type == 1 and item.tool_type == category: # ItemType.TOOL
+		return BREAK_SPEED_WITH_TOOL
+	return BREAK_SPEED_WITHOUT_TOOL
 
 func get_block_at(world, pos: Vector3) -> int:
 	var x = int(floor(pos.x))
