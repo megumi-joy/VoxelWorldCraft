@@ -37,7 +37,6 @@ func _process(delta):
 		if auto_start_timer <= 0.0:
 			printerr("Auto-Starting Single Player NOW...")
 			counting_down = false
-			started_game = true
 			_on_single_player_pressed()
 	elif single_player_button:
 		single_player_button.text = "Single Player"
