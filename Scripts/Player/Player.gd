@@ -225,6 +225,12 @@ func manual_interaction_check():
 				
 			if collider is StaticBody3D and voxel_world:
 				var block_pos = point - normal * 0.1
+				# Harvest: breaking a Berry Bush yields Berries (food) into the inventory.
+				var broken_type = get_block_at(voxel_world, block_pos)
+				if broken_type == 52: # Berry Bush
+					var harvest_inv = get_node_or_null("Inventory")
+					if harvest_inv: harvest_inv.add_item(70, 1) # Berries
+					show_message("Harvested Berries")
 				voxel_world.set_voxel.rpc(block_pos, 0)
 				await get_tree().create_timer(break_speed).timeout
 			elif collider.has_method("take_damage"):
@@ -247,10 +253,12 @@ func manual_interaction_check():
 			if selected_block_id > 0:
 				var item = ItemDatabase.get_item(selected_block_id)
 				if item and item.type == 3: # ItemType.CONSUMABLE
-					# Consume item logic here
-					# For now, just print and return
-					print("Consumed item: ", item.name)
-					# stats.consume_item(item) # Example
+					# Eat: restore Hunger via PlayerStats and consume one from the stack.
+					if stats and item.nutrition_value > 0:
+						stats.eat(item.nutrition_value)
+						var eat_inv = get_node_or_null("Inventory")
+						if eat_inv: eat_inv.remove_item(selected_block_id, 1)
+						show_message("Ate " + item.name + " (+" + str(int(item.nutrition_value)) + " Hunger)")
 					await get_tree().create_timer(0.3).timeout
 					return
 
