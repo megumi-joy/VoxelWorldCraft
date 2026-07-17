@@ -125,6 +125,14 @@ func _ready():
 	add_lines(image, 6, 5, Color(0.03, 0.35, 0.15))
 	add_spots(image, 6, 5, Color(0.05, 0.55, 0.25), 14)
 
+	# --- Row 6: Minecraft importer (see Scripts/Import/, tools/mc_import/) ---
+	# Unmapped-block placeholder (ID 90): classic "missing texture"
+	# magenta/black checkerboard, deliberately jarring so a gap in the
+	# MC->VoxelWorldCraft block map is obvious in a render, not silently
+	# absorbed into a real block's look.
+	generate_texture(image, 0, 6, Color(0, 0, 0), 0)
+	add_checkerboard(image, 0, 6, Color(1.0, 0.0, 1.0), Color(0.05, 0.05, 0.05))
+
 	# Save and Apply
 	var texture = ImageTexture.create_from_image(image)
 	var mat = StandardMaterial3D.new()
@@ -191,6 +199,16 @@ func add_flower(image: Image, x_idx: int, y_idx: int, color: Color):
 			if i*i + j*j < 16:
 				image.set_pixel(cx + i, cy - 6 + j, color)
 				
+func add_checkerboard(image: Image, x_idx: int, y_idx: int, color_a: Color, color_b: Color, squares: int = 8):
+	var start_x = x_idx * CELL_SIZE
+	var start_y = y_idx * CELL_SIZE
+	var square_size = CELL_SIZE / squares
+
+	for x in range(CELL_SIZE):
+		for y in range(CELL_SIZE):
+			var checker = ((x / square_size) + (y / square_size)) % 2
+			image.set_pixel(start_x + x, start_y + y, color_a if checker == 0 else color_b)
+
 func add_grass_stalks(image: Image, x_idx: int, y_idx: int, color: Color):
 	var start_x = x_idx * CELL_SIZE
 	var start_y = y_idx * CELL_SIZE

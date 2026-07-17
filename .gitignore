@@ -1,2 +1,10 @@
 # Godot 4+ specific ignores
 .godot/
+
+# Minecraft importer (tools/mc_import/): downloaded/generated world data and
+# converted-block JSON are local scratch input/output, never committed --
+# keep them out even if someone runs the pipeline with an in-repo OUT_DIR.
+*.mca
+tools/mc_import/output/
+tools/mc_import/world/
+__pycache__/
