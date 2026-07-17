@@ -278,6 +278,11 @@ func _apply_scene_shadow() -> void:
 			light.shadow_enabled = shadow_quality != ShadowQuality.OFF
 
 func _apply_view_distance() -> void:
+	# Only World.tscn's VoxelWorld is in this group (a deliberate choice --
+	# MainMenuWorld.tscn's VoxelWorld is NOT, so its small authored
+	# render_distance=1 decorative background stays fixed and isn't blown up
+	# to the gameplay View Distance value, which would cost perf on the menu
+	# screen for no visible benefit).
 	var vw := get_tree().get_first_node_in_group(GROUP_VOXEL_WORLD)
 	if vw and "render_distance" in vw:
 		vw.render_distance = view_distance
