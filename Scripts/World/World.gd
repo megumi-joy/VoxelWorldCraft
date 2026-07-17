@@ -3,6 +3,16 @@ extends Node3D
 @onready var voxel_world = $VoxelWorld
 
 func _ready():
+	# Re-apply persisted graphics settings to THIS world's WorldEnvironment /
+	# DirectionalLight3D / VoxelWorld -- they're fresh nodes from the .tscn
+	# defaults, not the ones any previous world had settings applied to (see
+	# GraphicsSettings.gd's "per-scene" tier comment). Safe to call before
+	# children's own _ready() logic below: node group membership is set at
+	# scene instancing time, and children _ready() before this parent
+	# _ready(), so WorldEnvironment/DirectionalLight3D/VoxelWorld are already
+	# in the tree and in their groups by now.
+	GraphicsSettings.apply_scene_settings()
+
 	# Simple Player Spawn for Single Player / Host
 	if not multiplayer.has_multiplayer_peer() or multiplayer.is_server():
 		spawn_player()

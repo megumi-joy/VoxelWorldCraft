@@ -2,6 +2,11 @@ extends Node
 class_name Inventory
 
 signal inventory_changed
+# Fired whenever `count` units of item `id` are successfully added -- unlike
+# inventory_changed (a bare "something changed, go re-render" ping), this
+# carries which item, so listeners can react to specific pickups. Player.gd
+# uses it to drive Field Journal discovery (see PlayerStats.discover_item).
+signal item_picked_up(id, count)
 
 @export var size: int = 24
 var items = [] # Array of dictionaries { "id": int, "count": int } or null
@@ -17,6 +22,8 @@ func _ready():
 	add_item(4, 5) # Wood
 
 func add_item(id: int, count: int) -> bool:
+	var requested = count
+
 	# Try to stack first
 	for i in range(size):
 		if items[i] and items[i].id == id:
@@ -28,16 +35,18 @@ func add_item(id: int, count: int) -> bool:
 				count -= to_add
 				if count == 0:
 					inventory_changed.emit()
+					item_picked_up.emit(id, requested)
 					return true
-	
+
 	# Find empty slot
 	if count > 0:
 		for i in range(size):
 			if items[i] == null:
 				items[i] = {"id": id, "count": count}
 				inventory_changed.emit()
+				item_picked_up.emit(id, requested)
 				return true
-				
+
 	inventory_changed.emit()
 	return false # Could not add all
 

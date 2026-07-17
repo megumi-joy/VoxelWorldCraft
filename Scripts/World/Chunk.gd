@@ -166,19 +166,62 @@ func generate_data():
 					if r < 0.01:
 						struct_gen.generate_pine(self, Vector3i(x, height, z))
 
-	# Ore Generation (Deep)
+	# Ore Generation (Deep) -- depth- and (for a couple of minerals)
+	# biome-gated. Rarer ores are checked first so they get first claim on a
+	# candidate voxel before common Coal/Copper (checked last) usually wins
+	# the roll; see ORE_TABLE below for the plausible-geology reasoning per
+	# mineral.
 	for x in range(16):
 		for z in range(16):
-			var height = int((noise.get_noise_2d(chunk_position.x*16+x, chunk_position.y*16+z)+1)*32)+64
+			var global_x = chunk_position.x * 16 + x
+			var global_z = chunk_position.y * 16 + z
+			var height = int((noise.get_noise_2d(global_x, global_z)+1)*32)+64
+			var temp = noise.get_noise_2d(global_x * 0.5, global_z * 0.5)
+			var moisture = moisture_noise.get_noise_2d(global_x, global_z)
+			var biome = get_biome(temp, moisture)
+
 			for y in range(1, height - 5):
-				if rng.randf() < 0.005: 
-					if y < 40 and rng.randf() < 0.2:
-						voxel_data[Vector3i(x, y, z)] = 6 # Iron
-					else:
-						voxel_data[Vector3i(x, y, z)] = 5 # Coal
+				var ore_id = pick_ore(y, biome, rng)
+				if ore_id != 0:
+					voxel_data[Vector3i(x, y, z)] = ore_id
 
 	struct_gen.free()
 	is_generating = false
+
+# id, y_min/y_max (inclusive world depth), chance (rolled per eligible
+# voxel), biomes (empty = spawns under any biome). Ordered rarest-first so a
+# rare ore's low-probability roll gets first shot at a voxel before a common
+# ore checked later in the list usually claims it.
+const ORE_TABLE = [
+	# Gold: very deep, very rare -- real gold veins form deep, at the
+	# outer limit of what a shallow prototype world can represent.
+	{"id": 81, "y_min": 1,  "y_max": 22,  "chance": 0.0006, "biomes": []},
+	# Hematite (iron oxide): moderately rare, mid-deep; biome-gated to
+	# Desert since its rust-red color is also what tints desert sand/rock.
+	{"id": 83, "y_min": 20, "y_max": 55,  "chance": 0.0018, "biomes": ["Desert"]},
+	# Quartz: fairly common, mid depth; gated to the two "hard ground"
+	# biomes (Desert/Tundra) rather than soft Forest/Plains loam.
+	{"id": 82, "y_min": 25, "y_max": 60,  "chance": 0.0025, "biomes": ["Desert", "Tundra"]},
+	# Iron: deep, uncommon (kept from the original ore pass).
+	{"id": 6,  "y_min": 1,  "y_max": 40,  "chance": 0.0015, "biomes": []},
+	# Malachite (copper carbonate): shallow-mid, forms in oxidized zones
+	# near the surface -- gated to Forest/Plains topsoil biomes.
+	{"id": 84, "y_min": 40, "y_max": 75,  "chance": 0.002,  "biomes": ["Forest", "Plains"]},
+	# Copper: shallow-mid, common, any biome.
+	{"id": 80, "y_min": 35, "y_max": 70,  "chance": 0.0035, "biomes": []},
+	# Coal: common, any depth/biome (kept from the original ore pass).
+	{"id": 5,  "y_min": 1,  "y_max": 200, "chance": 0.004,  "biomes": []},
+]
+
+func pick_ore(y: int, biome: String, rng: RandomNumberGenerator) -> int:
+	for ore in ORE_TABLE:
+		if y < ore.y_min or y > ore.y_max:
+			continue
+		if ore.biomes.size() > 0 and not ore.biomes.has(biome):
+			continue
+		if rng.randf() < ore.chance:
+			return ore.id
+	return 0
 
 func generate_mesh():
 	var surface_tool = SurfaceTool.new()
@@ -296,6 +339,13 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 55: atlas_idx = 4; atlas_row = 4 # Berry Bush (food source; was id 52, reassigned -- see ItemDatabase.gd)
 	elif type == 53: atlas_idx = 5; atlas_row = 4 # Blue Flower
 	elif type == 54: atlas_idx = 6; atlas_row = 4 # Pink Flower
+
+	# Row 5 (cont.): Wave 2 mineral ores (see TextureGenerator.gd / ItemDatabase.gd)
+	elif type == 80: atlas_idx = 2; atlas_row = 5 # Copper Ore
+	elif type == 81: atlas_idx = 3; atlas_row = 5 # Gold Ore
+	elif type == 82: atlas_idx = 4; atlas_row = 5 # Quartz
+	elif type == 83: atlas_idx = 5; atlas_row = 5 # Hematite
+	elif type == 84: atlas_idx = 6; atlas_row = 5 # Malachite Ore
 
 	var u_start = atlas_idx * UV_SIZE
 	var v_start = atlas_row * UV_SIZE

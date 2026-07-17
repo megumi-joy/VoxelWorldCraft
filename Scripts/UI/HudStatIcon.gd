@@ -3,7 +3,7 @@ extends Control
 # No image assets needed -- shapes are built from primitives so the HUD stays
 # self-contained (icon_type is set per-instance in Scenes/HUD.tscn).
 
-@export var icon_type: String = "heart" # "heart" (health) or "food" (hunger)
+@export var icon_type: String = "heart" # "heart" (health), "food" (hunger), or "coin" (gold)
 
 func _ready():
 	queue_redraw()
@@ -18,6 +18,8 @@ func _draw():
 			_draw_heart(w, h)
 		"food":
 			_draw_food(w, h)
+		"coin":
+			_draw_coin(w, h)
 		_:
 			pass
 
@@ -67,3 +69,14 @@ func _draw_food(w: float, h: float) -> void:
 		Vector2(w * 0.64, h * 0.24),
 	])
 	draw_colored_polygon(leaf_pts, leaf)
+
+func _draw_coin(w: float, h: float) -> void:
+	var outline := Color(0.55, 0.35, 0.02)
+	var body := Color(1.0, 0.82, 0.15)
+	var shine := Color(1, 1, 0.9, 0.6)
+	var center = Vector2(w * 0.5, h * 0.5)
+	var r = min(w, h) * 0.46
+
+	draw_circle(center, r, outline)
+	draw_circle(center, r * 0.82, body)
+	draw_circle(center + Vector2(-r * 0.28, -r * 0.28), r * 0.22, shine)
