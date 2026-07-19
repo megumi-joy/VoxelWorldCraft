@@ -87,7 +87,16 @@ func open() -> void:
 func close() -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	# Only re-capture the mouse if a Player is actually in the scene. This
+	# panel is reused as-is from Scenes/MainMenu.tscn (see MainMenu.gd's
+	# Settings button) where there's no player to capture the mouse for --
+	# forcing MOUSE_MODE_CAPTURED there would hide/lock the cursor over the
+	# menu's own Play/Settings/Quit buttons, making them unclickable until
+	# Esc was pressed blind.
+	if get_tree().get_first_node_in_group("player"):
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	else:
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):

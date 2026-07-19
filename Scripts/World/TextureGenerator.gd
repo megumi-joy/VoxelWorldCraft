@@ -133,7 +133,18 @@ func _ready():
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	mat.alpha_scissor_threshold = 0.5
 	mat.vertex_color_use_as_albedo = true # Allow tinting too?
-	
+
+	# Block-edge dithering: a subtle stippled darkening near each face's UV
+	# edge (see Shaders/BlockEdgeDither.gdshader for the actual pattern).
+	# Layered on as a `next_pass` rather than folded into `mat` itself, so
+	# the StandardMaterial3D setup above stays exactly as it was and the
+	# whole effect is removable by deleting just this one assignment.
+	var dither_shader = load("res://Shaders/BlockEdgeDither.gdshader")
+	if dither_shader:
+		var dither_mat = ShaderMaterial.new()
+		dither_mat.shader = dither_shader
+		mat.next_pass = dither_mat
+
 	var world = get_parent()
 	if world:
 		world.chunk_material = mat

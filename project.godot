@@ -25,6 +25,9 @@ SaveSystem="*res://Scripts/Autoload/SaveSystem.gd"
 AutoTester="*res://Scripts/Testing/AutoTester.gd"
 HudSettings="*res://Scripts/Autoload/HudSettings.gd"
 GraphicsSettings="*res://Scripts/Autoload/GraphicsSettings.gd"
+ActionLog="*res://Scripts/Autoload/ActionLog.gd"
+SoundCaptions="*res://Scripts/Autoload/SoundCaptions.gd"
+Telemetry="*res://Scripts/Autoload/Telemetry.gd"
 
 [display]
 
