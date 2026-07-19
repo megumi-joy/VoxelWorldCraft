@@ -99,6 +99,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Stamps res://build_info.json (version + short commit hash + date)
+      # from git + project.godot so the exported build's main menu shows an
+      # accurate version/date instead of a hand-maintained string that goes
+      # stale — see scripts/stamp_build_info.sh + RELEASING.md. Runs per
+      # matrix leg (both platforms get an identical, deterministic stamp
+      # for the same commit) rather than being shared via a separate job +
+      # artifact, to keep this workflow simple.
+      - name: Stamp build_info.json
+        run: ./scripts/stamp_build_info.sh
+
       - name: Create export output directory
         run: mkdir -p "$(dirname '${{ matrix.out }}')"
 
