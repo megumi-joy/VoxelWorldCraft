@@ -1,0 +1,321 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Launcher.gd" id="1_launcher"]
+
+[sub_resource type="StyleBoxFlat" id="sb_card"]
+bg_color = Color(1, 1, 1, 0.95)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.25, 0.45, 0.6, 1)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+
+[sub_resource type="StyleBoxFlat" id="sb_play_normal"]
+bg_color = Color(0.3, 0.78, 0.35, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.16, 0.5, 0.2, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_play_hover"]
+bg_color = Color(0.38, 0.85, 0.42, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.16, 0.5, 0.2, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_play_pressed"]
+bg_color = Color(0.22, 0.62, 0.27, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.12, 0.4, 0.16, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_play_disabled"]
+bg_color = Color(0.75, 0.78, 0.75, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.6, 0.63, 0.6, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_update_normal"]
+bg_color = Color(1.0, 0.6, 0.2, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.75, 0.42, 0.08, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_update_hover"]
+bg_color = Color(1.0, 0.68, 0.32, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.75, 0.42, 0.08, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_update_pressed"]
+bg_color = Color(0.85, 0.5, 0.14, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.6, 0.32, 0.05, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_update_disabled"]
+bg_color = Color(0.75, 0.78, 0.75, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.6, 0.63, 0.6, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="sb_settings_normal"]
+bg_color = Color(0.85, 0.9, 0.95, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.68, 0.75, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="sb_settings_hover"]
+bg_color = Color(0.92, 0.95, 0.98, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.68, 0.75, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_launcher")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.55, 0.82, 0.98, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Card" type="PanelContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("sb_card")
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Card"]
+layout_mode = 2
+custom_minimum_size = Vector2(360, 0)
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/Card/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+theme_override_colors/font_color = Color(0.15, 0.25, 0.35, 1)
+text = "VoxelWorldCraft"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CenterContainer/Card/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.15, 0.25, 0.35, 0.7)
+text = "Лаунчер"
+horizontal_alignment = 1
+
+[node name="InstalledVersionLabel" type="Label" parent="CenterContainer/Card/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.15, 0.25, 0.35, 1)
+text = "Игра не установлена"
+horizontal_alignment = 1
+
+[node name="UpdatedDateLabel" type="Label" parent="CenterContainer/Card/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.15, 0.25, 0.35, 0.6)
+text = ""
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/Card/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.2, 0.35, 0.5, 1)
+text = "Проверка обновлений…"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Progress" type="ProgressBar" parent="CenterContainer/Card/VBox"]
+visible = false
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+show_percentage = false
+
+[node name="ButtonsRow" type="HBoxContainer" parent="CenterContainer/Card/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="PlayButton" type="Button" parent="CenterContainer/Card/VBox/ButtonsRow"]
+custom_minimum_size = Vector2(150, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_play_normal")
+theme_override_styles/hover = SubResource("sb_play_hover")
+theme_override_styles/pressed = SubResource("sb_play_pressed")
+theme_override_styles/disabled = SubResource("sb_play_disabled")
+text = "🎮 Играть"
+
+[node name="UpdateButton" type="Button" parent="CenterContainer/Card/VBox/ButtonsRow"]
+custom_minimum_size = Vector2(150, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_update_normal")
+theme_override_styles/hover = SubResource("sb_update_hover")
+theme_override_styles/pressed = SubResource("sb_update_pressed")
+theme_override_styles/disabled = SubResource("sb_update_disabled")
+text = "⬇ Обновить"
+
+[node name="SettingsButton" type="Button" parent="CenterContainer/Card/VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.15, 0.25, 0.35, 1)
+theme_override_styles/normal = SubResource("sb_settings_normal")
+theme_override_styles/hover = SubResource("sb_settings_hover")
+text = "⚙ Настройки"
+
+[node name="SettingsPopup" type="PopupPanel" parent="."]
+size = Vector2i(420, 240)
+
+[node name="SettingsVBox" type="VBoxContainer" parent="SettingsPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="InstallDirLabel" type="Label" parent="SettingsPopup/SettingsVBox"]
+layout_mode = 2
+text = "Папка установки игры:"
+
+[node name="InstallDirRow" type="HBoxContainer" parent="SettingsPopup/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="InstallDirEdit" type="LineEdit" parent="SettingsPopup/SettingsVBox/InstallDirRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InstallDirBrowseButton" type="Button" parent="SettingsPopup/SettingsVBox/InstallDirRow"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+text = "📁"
+
+[node name="SourceDirLabel" type="Label" parent="SettingsPopup/SettingsVBox"]
+layout_mode = 2
+text = "Папка со сборками (источник обновлений):"
+
+[node name="SourceDirRow" type="HBoxContainer" parent="SettingsPopup/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SourceDirEdit" type="LineEdit" parent="SettingsPopup/SettingsVBox/SourceDirRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SourceDirBrowseButton" type="Button" parent="SettingsPopup/SettingsVBox/SourceDirRow"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+text = "📁"
+
+[node name="SettingsButtonsRow" type="HBoxContainer" parent="SettingsPopup/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="SettingsSaveButton" type="Button" parent="SettingsPopup/SettingsVBox/SettingsButtonsRow"]
+layout_mode = 2
+text = "Сохранить"
+
+[node name="SettingsCancelButton" type="Button" parent="SettingsPopup/SettingsVBox/SettingsButtonsRow"]
+layout_mode = 2
+text = "Отмена"
+
+[node name="DirDialog" type="FileDialog" parent="."]
+title = "Выберите папку"
+size = Vector2i(600, 400)
+file_mode = 2
+access = 2

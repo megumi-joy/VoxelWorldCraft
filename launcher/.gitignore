@@ -1,0 +1,6 @@
+# Godot 4+ specific ignores (same as the root project's .gitignore, but
+# also covers build/ since the root .gitignore doesn't need to -- the main
+# project's CI uploads its build/ output as a workflow artifact rather
+# than committing it).
+.godot/
+build/
