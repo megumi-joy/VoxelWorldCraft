@@ -151,7 +151,17 @@ func _ready():
 	# capture sticks.
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
-	
+
+	# The interaction ray must never hit the player's own body. Aiming
+	# steeply down made it self-hit this CharacterBody3D, which fell into
+	# manual_interaction_check()'s "collider has take_damage()" branch and
+	# called self.take_damage() every frame -> a death loop with
+	# cause="damage" (the real "копание вниз убивает"). Excluding self also
+	# ROUTES the down-ray to the terrain below, so _process_mining() /
+	# _is_block_under_feet() finally engage when digging down.
+	if raycast:
+		raycast.add_exception(self)
+
 	if stats:
 		stats.died.connect(_on_death)
 
@@ -253,6 +263,11 @@ func setup_nodes():
 	raycast.target_position = Vector3(0, 0, -5)
 	raycast.enabled = true
 	camera.add_child(raycast)
+	# Fallback-path twin of _ready()'s exception: this freshly-created ray
+	# must also ignore the player's own body (see _ready()). setup_nodes()
+	# REPLACES the raycast node, so the exception must be re-added here or
+	# it's lost.
+	raycast.add_exception(self)
 	
 	var col = CollisionShape3D.new()
 	col.name = "CollisionShape3D"
@@ -629,7 +644,6 @@ func manual_interaction_check(delta: float):
 	if not left and not right: return
 
 	if not raycast.is_colliding():
-		print("[DBG_INTERACT] no raycast hit, cam_pitch_deg=", rad_to_deg(camera.rotation.x))
 		# Looking away from every block also cancels mining progress.
 		_mining_progress = 0.0
 		_mining_blocked = false
@@ -639,7 +653,6 @@ func manual_interaction_check(delta: float):
 		var point = raycast.get_collision_point()
 		var normal = raycast.get_collision_normal()
 		var voxel_world = get_node_or_null("/root/World/VoxelWorld")
-		print("[DBG_INTERACT] hit=", collider, " is_static=", collider is StaticBody3D, " voxel_world=", voxel_world)
 
 		# Left Click: Destroy (hold-to-mine, single target -- _process_mining()
 		# below owns the delay/single-target/under-feet logic; this call site
@@ -647,7 +660,10 @@ func manual_interaction_check(delta: float):
 		if left:
 			if collider is StaticBody3D and voxel_world:
 				_process_mining(delta, voxel_world, point, normal)
-			elif collider.has_method("take_damage"):
+			elif collider != self and collider.has_method("take_damage"):
+				# `collider != self`: belt-and-suspenders against the ray
+				# self-hitting the player (add_exception in _ready/setup_nodes
+				# already prevents it) so LMB can never damage the player.
 				_mining_progress = 0.0
 				_mining_blocked = false
 				var item = ItemDatabase.get_item(selected_block_id)
