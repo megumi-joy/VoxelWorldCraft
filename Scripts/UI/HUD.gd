@@ -15,6 +15,11 @@ const COL_HUNGER_FILL := Color(1.0, 0.62, 0.06)
 const COL_HUNGER_BG := Color(0.40, 0.22, 0.03)
 const COL_AI_ON := Color(0.30, 0.80, 0.40)
 const COL_AI_OFF := Color(0.30, 0.55, 0.95)
+const COL_DEATH_TITLE := Color(0.95, 0.22, 0.24)
+const COL_DEATH_SUBTITLE := Color(1, 1, 1, 0.9)
+# Overlay's own alpha at full "in" -- kept < 1 so it's an unmistakable dim
+# rather than a hard cut to black.
+const DEATH_OVERLAY_ALPHA := 0.82
 
 @onready var health_bar: ProgressBar = $StatsPanel/Margin/VBox/HealthRow/HealthBar
 @onready var hunger_bar: ProgressBar = $StatsPanel/Margin/VBox/HungerRow/HungerBar
@@ -23,6 +28,9 @@ const COL_AI_OFF := Color(0.30, 0.55, 0.95)
 @onready var settings_button: Button = $SettingsButton
 @onready var message_label: Label = $MessageLabel
 @onready var crosshair: Control = $Crosshair
+@onready var death_overlay: ColorRect = $DeathOverlay
+@onready var death_cause_label: Label = $DeathOverlay/VBox/CauseLabel
+@onready var death_respawn_label: Label = $DeathOverlay/VBox/RespawnLabel
 
 func _ready():
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -31,6 +39,7 @@ func _ready():
 	_style_bar(hunger_bar, COL_HUNGER_BG, COL_HUNGER_FILL)
 	_style_message_label()
 	_style_settings_button()
+	_style_death_overlay()
 	ai_button.pressed.connect(_on_ai_button_pressed)
 	settings_button.pressed.connect(_on_settings_button_pressed)
 	update_ai_button(false)
@@ -112,6 +121,39 @@ func _style_settings_button() -> void:
 	settings_button.add_theme_color_override("font_color", COL_PANEL_BORDER)
 	settings_button.add_theme_color_override("font_hover_color", COL_PANEL_BORDER)
 	settings_button.add_theme_color_override("font_pressed_color", COL_PANEL_BORDER)
+
+func _style_death_overlay() -> void:
+	death_cause_label.add_theme_font_size_override("font_size", 44)
+	death_cause_label.add_theme_color_override("font_color", COL_DEATH_TITLE)
+	death_cause_label.add_theme_color_override("font_outline_color", Color(0.05, 0.02, 0.02))
+	death_cause_label.add_theme_constant_override("outline_size", 8)
+
+	death_respawn_label.add_theme_font_size_override("font_size", 22)
+	death_respawn_label.add_theme_color_override("font_color", COL_DEATH_SUBTITLE)
+	death_respawn_label.add_theme_color_override("font_outline_color", Color(0.05, 0.02, 0.02))
+	death_respawn_label.add_theme_constant_override("outline_size", 5)
+
+## Clear death/respawn feedback (issue: player would respawn with no idea
+## why). `reason` is the human-readable cause -- see Player.gd's
+## DEATH_REASONS -- shown above a "Respawning..." line while the screen
+## fades in, holds, then fades back out as the player reappears at spawn.
+## Player.gd calls this the instant PlayerStats.died fires / a void-fall is
+## caught, i.e. before the position teleport, so the fade-in reads as "you
+## died here" rather than lagging behind the teleport.
+const DEATH_FADE_TIME := 0.35
+const DEATH_HOLD_TIME := 1.2
+
+func show_death_screen(reason: String) -> void:
+	death_cause_label.text = "YOU DIED: " + reason
+	death_respawn_label.text = "Respawning..."
+	death_overlay.visible = true
+	death_overlay.color.a = 0.0
+
+	var tween = create_tween()
+	tween.tween_property(death_overlay, "color:a", DEATH_OVERLAY_ALPHA, DEATH_FADE_TIME)
+	tween.tween_interval(DEATH_HOLD_TIME)
+	tween.tween_property(death_overlay, "color:a", 0.0, DEATH_FADE_TIME)
+	tween.tween_callback(func(): death_overlay.visible = false)
 
 func update_ai_button(enabled: bool) -> void:
 	if not ai_button:

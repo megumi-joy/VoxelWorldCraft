@@ -124,7 +124,7 @@ var attack_cooldown = 0.0
 func attack_player():
 	if attack_cooldown <= 0:
 		if target_player and target_player.has_method("take_damage"):
-			target_player.take_damage(attack_damage)
+			target_player.take_damage(attack_damage, "mob")
 			attack_cooldown = 1.0
 
 func _physics_process(delta):

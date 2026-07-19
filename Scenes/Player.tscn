@@ -14,7 +14,7 @@
 [ext_resource type="PackedScene" uid="uid://touch_controls" path="res://Scenes/TouchControls.tscn" id="12_touch"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
-radius = 0.5
+radius = 0.35
 height = 2.0
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_1"]
