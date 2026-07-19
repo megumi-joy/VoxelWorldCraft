@@ -211,6 +211,18 @@ func _ready():
 	pink_flower.block_id = 54
 	items[54] = pink_flower
 
+	# ID 56: Torch (placeable light source; block-entity like Furnace/Bed --
+	# see Scenes/Blocks/TorchBlock.tscn -- but unlike those it is NOT written
+	# into voxel_data/the chunk mesh (see VoxelWorld.set_voxel), so it has no
+	# solid cube and no atlas texture entry here. Its only visuals are the
+	# entity's own pole+flame mesh and OmniLight3D.)
+	var torch = item_data_type.new()
+	torch.id = 56
+	torch.name = "Torch"
+	torch.type = item_data_type.ItemType.BLOCK
+	torch.block_id = 56
+	items[56] = torch
+
 	# ID 70: Berries (edible; harvested by breaking a Berry Bush)
 	var berries = item_data_type.new()
 	berries.id = 70
