@@ -124,6 +124,15 @@ func _copy_dir_recursive(src: String, dest: String) -> int:
 				err = _copy_dir_recursive(src_path, dest_path)
 			else:
 				err = DirAccess.copy_absolute(src_path, dest_path)
+				# DirAccess.copy_absolute does NOT preserve the source
+				# file's permission bits on Linux (verified: a chmod +x
+				# game binary comes out of the copy as plain 0644) --
+				# without this, the copied VoxelWorldCraft.x86_64 would
+				# silently fail to launch via OS.create_process after
+				# every update. Re-apply the source's unix permissions on
+				# every copied file; harmless no-op on Windows.
+				if err == OK:
+					FileAccess.set_unix_permissions(dest_path, FileAccess.get_unix_permissions(src_path))
 			if err != OK:
 				dir.list_dir_end()
 				return err
