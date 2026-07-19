@@ -77,6 +77,13 @@ func take_damage(amount: float, cause: String = "damage"):
 	# Let's say armor is a flat value that reduces damage but has a cap.
 	var final_damage = amount * (1.0 - (armor / (armor + 50.0))) # Diminishing returns formula
 
+	# Sound-subtitle caption (accessibility, see SoundCaptions.gd) -- hooked
+	# here rather than in Player.gd's take_damage() wrapper so it covers
+	# every damage source through one call site, including starvation ticks
+	# (PlayerStats._process() calls this directly, bypassing Player.gd).
+	if final_damage > 0.01:
+		SoundCaptions.caption("[Урон]")
+
 	health -= final_damage
 	if health <= 0:
 		health = 0

@@ -52,5 +52,18 @@ func update_ui():
 
 func on_craft(index: int):
 	if inventory:
+		var recipe = crafting_manager.recipes[index] if index >= 0 and index < crafting_manager.recipes.size() else null
 		crafting_manager.craft(index, inventory)
 		update_ui() # Refresh
+
+		# Action-log entry (see Scripts/Autoload/ActionLog.gd) -- logged here
+		# rather than off Inventory.item_picked_up, since craft() adds the
+		# output through the same add_item() a plain pickup uses; hooking
+		# the signal instead would double-log every craft as a "pickup" too.
+		if recipe and recipe.has("output") and recipe.output.has("id"):
+			var db = get_node("/root/ItemDatabase")
+			var name = "Unknown"
+			if db:
+				var data = db.get_item(recipe.output.id)
+				if data: name = data.name
+			ActionLog.log_event("Скрафчено: " + name + " x" + str(recipe.output.count))

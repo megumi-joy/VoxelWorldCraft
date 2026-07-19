@@ -72,6 +72,15 @@ var _camera_base_local_pos: Vector3 = Vector3.ZERO
 var _base_fov: float = 75.0
 var _smoothed_look_delta: Vector2 = Vector2.ZERO
 
+# Throttled "[Шаги]" (footsteps) sound-subtitle caption -- see
+# SoundCaptions.gd. Fires at most once per FOOTSTEP_CAPTION_INTERVAL while
+# actually walking/sprinting on the ground, not every physics frame (there's
+# no footstep audio to caption yet, just the accessibility cue, so a steady
+# "you are currently walking" pulse is enough -- once per real footfall
+# would need actual foot-cycle timing this game doesn't have).
+const FOOTSTEP_CAPTION_INTERVAL := 1.8
+var _footstep_caption_cooldown: float = 0.0
+
 # Respawn point used both for the normal death respawn and the void-fall
 # catch below -- kept as one constant so both paths can never drift apart.
 const SPAWN_POSITION := Vector3(0, 100, 0)
@@ -517,6 +526,14 @@ func _apply_horizontal_movement(delta: float, input_dir: Vector2, is_sprinting: 
 	velocity.x = horizontal.x
 	velocity.z = horizontal.y
 
+	_footstep_caption_cooldown -= delta
+	if grounded and input_dir != Vector2.ZERO and horizontal.length() > 0.5:
+		if _footstep_caption_cooldown <= 0.0:
+			_footstep_caption_cooldown = FOOTSTEP_CAPTION_INTERVAL
+			SoundCaptions.caption("[Шаги]")
+	else:
+		_footstep_caption_cooldown = 0.0
+
 func _apply_head_bob(delta: float) -> void:
 	if not head_bob_enabled or not camera:
 		return
@@ -585,6 +602,7 @@ func manual_interaction_check():
 				if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
 					if harvest_inv: harvest_inv.add_item(70, 1) # Berries
 					show_message("Harvested Berries")
+					ActionLog.log_event("Подобрано: Berries x1")
 				# Generic collectible pickup: the decorative flowers and the
 				# wave-2 mineral ores are each their own block+item (id ==
 				# block_id, see ItemDatabase.gd), so breaking one yields
@@ -596,6 +614,10 @@ func manual_interaction_check():
 				# to keep this change's blast radius limited to wave 2.
 				elif block_type in COLLECTIBLE_BLOCK_IDS:
 					if harvest_inv: harvest_inv.add_item(block_type, 1)
+					ActionLog.log_event("Подобрано: " + _block_display_name(block_type) + " x1")
+				ActionLog.log_event("Сломан блок: " + _block_display_name(block_type))
+				SoundCaptions.caption("[Копание]")
+				Telemetry.log_event("block_broken", {"block_id": block_type})
 				voxel_world.set_voxel.rpc(block_pos, 0)
 				await get_tree().create_timer(break_speed).timeout
 			elif collider.has_method("take_damage"):
@@ -674,6 +696,9 @@ func manual_interaction_check():
 				# placing by item id alone would silently place the wrong
 				# block for those.
 				var place_block_id = item.block_id if item.block_id > 0 else selected_block_id
+				ActionLog.log_event("Поставлен блок: " + item.name)
+				SoundCaptions.caption("[Стук]")
+				Telemetry.log_event("block_placed", {"block_id": place_block_id})
 				voxel_world.set_voxel.rpc(place_pos, place_block_id)
 				await get_tree().create_timer(0.2).timeout
 
@@ -731,6 +756,17 @@ func get_break_speed(held_item_id: int, block_type: int) -> float:
 	if item and item.type == 1 and item.tool_type == category: # ItemType.TOOL
 		return BREAK_SPEED_WITH_TOOL
 	return BREAK_SPEED_WITHOUT_TOOL
+
+## Human-readable name for a raw block/voxel id, for ActionLog lines. Most
+## blocks have a matching ItemDatabase entry (id == block_id, see
+## COLLECTIBLE_BLOCK_IDS above and ItemDatabase.gd) but a few purely
+## world-generated blocks (farmland, seedlings, bedrock, ...) don't -- fall
+## back to a numeric tag rather than failing the log line.
+func _block_display_name(block_type: int) -> String:
+	var item = ItemDatabase.get_item(block_type)
+	if item and item.name != "":
+		return item.name
+	return "#%d" % block_type
 
 func get_block_at(world, pos: Vector3) -> int:
 	var x = int(floor(pos.x))
@@ -795,9 +831,14 @@ func _on_death(cause: String = "damage"):
 		# setup_nodes()) so death is never silent even there.
 		show_message(reason + " -- Respawning...")
 
+	ActionLog.log_event("☠ Погиб: " + reason)
+	SoundCaptions.caption("[Смерть]")
+	Telemetry.log_event("death", {"cause": cause})
+
 	# Simple respawn logic
 	position = SPAWN_POSITION
 	velocity = Vector3.ZERO
 	stats.heal(100)
 	stats.eat(100)
 	_void_fall_handled = false
+	ActionLog.log_event("Возрождение")
