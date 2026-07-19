@@ -217,6 +217,9 @@ const ORE_TABLE = [
 	# Gold: very deep, very rare -- real gold veins form deep, at the
 	# outer limit of what a shallow prototype world can represent.
 	{"id": 81, "y_min": 1,  "y_max": 22,  "chance": 0.0006, "biomes": []},
+	# Amethyst: rare crystal geode, mid-deep, any biome -- gem tier between
+	# Gold and Hematite in rarity.
+	{"id": 85, "y_min": 12, "y_max": 45,  "chance": 0.001,  "biomes": []},
 	# Hematite (iron oxide): moderately rare, mid-deep; biome-gated to
 	# Desert since its rust-red color is also what tints desert sand/rock.
 	{"id": 83, "y_min": 20, "y_max": 55,  "chance": 0.0018, "biomes": ["Desert"]},
@@ -367,6 +370,7 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 82: atlas_idx = 4; atlas_row = 5 # Quartz
 	elif type == 83: atlas_idx = 5; atlas_row = 5 # Hematite
 	elif type == 84: atlas_idx = 6; atlas_row = 5 # Malachite Ore
+	elif type == 85: atlas_idx = 7; atlas_row = 5 # Amethyst Ore
 
 	var u_start = atlas_idx * UV_SIZE
 	var v_start = atlas_row * UV_SIZE

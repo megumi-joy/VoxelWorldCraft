@@ -130,6 +130,90 @@ func _ready():
 	sticks.type = item_data_type.ItemType.RESOURCE
 	items[23] = sticks
 
+	# ID 62-63: Iron smelting chain. Iron Ore (id 6) already exists as a
+	# BLOCK and already generates underground (see Chunk.gd's ORE_TABLE) --
+	# it just wasn't collectible (not in Player.gd's COLLECTIBLE_BLOCK_IDS,
+	# so mining it dropped nothing). Raw Iron is the new mined drop (see
+	# Player.gd's _process_mining), smelted in the Furnace into Iron Ingot
+	# (see Furnace.gd's get_smelting_result -- this replaces its old
+	# hardcoded "input 6 -> 1, for test" placeholder).
+	var raw_iron = item_data_type.new()
+	raw_iron.id = 62
+	raw_iron.name = "Raw Iron"
+	raw_iron.type = item_data_type.ItemType.RESOURCE
+	items[62] = raw_iron
+
+	var iron_ingot = item_data_type.new()
+	iron_ingot.id = 63
+	iron_ingot.name = "Iron Ingot"
+	iron_ingot.type = item_data_type.ItemType.RESOURCE
+	items[63] = iron_ingot
+
+	# ID 64-65: Gold/Copper Ingots. Gold Ore (81) and Copper Ore (80)
+	# already existed, already generate underground (Chunk.gd ORE_TABLE),
+	# and are already collectible + trigger Field Journal discovery (see
+	# COLLECTIBLE_BLOCK_IDS in Player.gd and CodexDatabase.gd's
+	# "gold_ore"/"copper_ore" entries, both keyed on item id 81/80).
+	# Smelting takes those existing ore items directly as Furnace input
+	# (see Furnace.gd) rather than introducing separate "Raw Gold"/"Raw
+	# Copper" drops the way Iron does above -- routing the mined drop
+	# through a new raw-material id (like Iron Ore, which had no
+	# collectible/Codex behavior to begin with) would silently break
+	# existing gold/copper discovery, since players would stop ever
+	# receiving item 80/81 into their inventory. See PR description for
+	# the faithful-but-heavier alternative (separate raw items + re-keying
+	# CodexDatabase.item_to_species).
+	var gold_ingot = item_data_type.new()
+	gold_ingot.id = 64
+	gold_ingot.name = "Gold Ingot"
+	gold_ingot.type = item_data_type.ItemType.RESOURCE
+	items[64] = gold_ingot
+
+	var copper_ingot = item_data_type.new()
+	copper_ingot.id = 65
+	copper_ingot.name = "Copper Ingot"
+	copper_ingot.type = item_data_type.ItemType.RESOURCE
+	items[65] = copper_ingot
+
+	# ID 66: Amethyst Shard -- dropped by mining Amethyst Ore (85, new
+	# below). A gem, not a metal: no smelting, just a collectible/crafting
+	# resource.
+	var amethyst_shard = item_data_type.new()
+	amethyst_shard.id = 66
+	amethyst_shard.name = "Amethyst Shard"
+	amethyst_shard.type = item_data_type.ItemType.RESOURCE
+	items[66] = amethyst_shard
+
+	# ID 67-69: Buckets. TOOL type (not a mining tool -- tool_type stays
+	# ""), non-stackable, matching Sword's stackable=false. RMB handling
+	# (fill from a Water/Lava source, place from a full bucket) lives in
+	# Player.gd's manual_interaction_check, in the same "Tool Logic"
+	# section as the Hoe (id 33) special-case right above it -- see that
+	# file. Water (40) and Lava (41) already exist as placeable
+	# items/blocks (see the "Nature & Fluids" section above); a bucket
+	# just moves an existing source block instead of consuming an
+	# inventory item to place a new one.
+	var bucket_empty = item_data_type.new()
+	bucket_empty.id = 67
+	bucket_empty.name = "Bucket"
+	bucket_empty.type = item_data_type.ItemType.TOOL
+	bucket_empty.stackable = false
+	items[67] = bucket_empty
+
+	var bucket_water = item_data_type.new()
+	bucket_water.id = 68
+	bucket_water.name = "Water Bucket"
+	bucket_water.type = item_data_type.ItemType.TOOL
+	bucket_water.stackable = false
+	items[68] = bucket_water
+
+	var bucket_lava = item_data_type.new()
+	bucket_lava.id = 69
+	bucket_lava.name = "Lava Bucket"
+	bucket_lava.type = item_data_type.ItemType.TOOL
+	bucket_lava.stackable = false
+	items[69] = bucket_lava
+
 	# ID 30-33: Wooden Tools
 	# NOTE: this dict used to be built and then never actually turned into
 	# ItemData entries below -- items 30-33 didn't exist in `items` at all,
@@ -211,6 +295,18 @@ func _ready():
 	pink_flower.block_id = 54
 	items[54] = pink_flower
 
+	# ID 56: Torch (placeable light source; block-entity like Furnace/Bed --
+	# see Scenes/Blocks/TorchBlock.tscn -- but unlike those it is NOT written
+	# into voxel_data/the chunk mesh (see VoxelWorld.set_voxel), so it has no
+	# solid cube and no atlas texture entry here. Its only visuals are the
+	# entity's own pole+flame mesh and OmniLight3D.)
+	var torch = item_data_type.new()
+	torch.id = 56
+	torch.name = "Torch"
+	torch.type = item_data_type.ItemType.BLOCK
+	torch.block_id = 56
+	items[56] = torch
+
 	# ID 70: Berries (edible; harvested by breaking a Berry Bush)
 	var berries = item_data_type.new()
 	berries.id = 70
@@ -218,6 +314,22 @@ func _ready():
 	berries.type = item_data_type.ItemType.CONSUMABLE
 	berries.nutrition_value = 12.0
 	items[70] = berries
+
+	# ID 71-72: Sheep drops (first passive fauna -- see Sheep.gd). Wool is a
+	# crafting resource (no recipe uses it yet, same as Sticks/Seeds before
+	# their consumers existed); Mutton is edible.
+	var wool = item_data_type.new()
+	wool.id = 71
+	wool.name = "Wool"
+	wool.type = item_data_type.ItemType.RESOURCE
+	items[71] = wool
+
+	var mutton = item_data_type.new()
+	mutton.id = 72
+	mutton.name = "Mutton"
+	mutton.type = item_data_type.ItemType.CONSUMABLE
+	mutton.nutrition_value = 25.0
+	items[72] = mutton
 
 	# ID 80-84: Mineral ores (wave 2). Each is its own block+item (id ==
 	# block_id, same pattern as Coal/Iron), mined via the pickaxe category
@@ -238,6 +350,22 @@ func _ready():
 		m.type = item_data_type.ItemType.BLOCK
 		m.block_id = mid
 		items[mid] = m
+
+	# ID 85: Amethyst Ore. Same block+worldgen shape as the wave-2 minerals
+	# above (id == block_id, generated in Chunk.gd's ORE_TABLE, pickaxe
+	# category), but registered separately -- unlike 80-84, this one is NOT
+	# in Player.gd's COLLECTIBLE_BLOCK_IDS (mining it does not drop itself)
+	# and has no CodexDatabase entry. It drops Amethyst Shard (66) via its
+	# own mining branch instead, and Codex/Field Journal wiring is left as
+	# a follow-up (same deliberate scope cut as Torch/Sheep -- see PR
+	# description), so this entry exists mainly for world-reference
+	# completeness (matching every other block having an item id).
+	var amethyst_ore = item_data_type.new()
+	amethyst_ore.id = 85
+	amethyst_ore.name = "Amethyst Ore"
+	amethyst_ore.type = item_data_type.ItemType.BLOCK
+	amethyst_ore.block_id = 85
+	items[85] = amethyst_ore
 
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements
@@ -276,6 +404,7 @@ const BLOCK_TOOL_CATEGORY = {
 	82: "pickaxe", # Quartz
 	83: "pickaxe", # Hematite
 	84: "pickaxe", # Malachite Ore
+	85: "pickaxe", # Amethyst Ore
 	4: "axe",      # Wood (Oak Log)
 	13: "axe",     # Planks
 	48: "axe",     # Birch Wood

@@ -94,3 +94,14 @@ the `barichello/godot-ci:4.3`-based container via podman (or Docker). See
   programmatically via `FieldJournalUI.open()` -- everything logged with a
   `[Wave2Demo]` prefix). This is also the scene/flag combo used with
   `tools/record_movie_maker.sh` to capture the wave-2 showcase clip.
+- **Torch + Sheep demo/verification**: `godot --headless --path .
+  Scenes/LaunchTest.tscn -- --torchsheep-demo` (drives
+  `Scripts/Testing/TorchSheepDemoDriver.gd` -- self-checks that Torch/
+  Sheep/iron-chain/gold/copper/Amethyst/Bucket items are all registered in
+  `ItemDatabase` and that `TorchBlock.tscn`/`Sheep.tscn` actually
+  instantiate, then places a real Torch via `VoxelWorld.set_voxel()` and
+  spawns a real Sheep in front of the player and asserts at runtime that
+  the torch's block-entity has a lit `OmniLight3D` and that its cell has
+  no solid `voxel_data` (proving the "no double-cube" placement design
+  actually behaves as intended) -- everything logged with a
+  `[TorchSheepDemo]` prefix).

@@ -714,6 +714,37 @@ func manual_interaction_check(delta: float):
 							await get_tree().create_timer(0.3).timeout
 							return
 
+				# 2b. Bucket Logic: empty bucket + RMB on a Water/Lava
+				# source drains it and fills the bucket; a full bucket +
+				# RMB places its fluid into the adjacent cell (same
+				# point+normal*0.1 spot Normal Block Placement below uses).
+				# Inventory swap is two generic remove/add calls (there's
+				# no slot-specific "replace" on Inventory) -- same idiom
+				# Normal Block Placement already uses for its own
+				# remove_item call.
+				if selected_block_id == 67: # Empty Bucket
+					if block_type == 40 or block_type == 41: # Water / Lava source
+						var filled_id = 68 if block_type == 40 else 69
+						voxel_world.set_voxel.rpc(target_pos, 0) # Drain the source
+						if inventory:
+							inventory.remove_item(67, 1)
+							inventory.add_item(filled_id, 1)
+						show_message("Bucket filled")
+						ActionLog.log_event("Наполнено ведро")
+						await get_tree().create_timer(0.3).timeout
+						return
+				elif selected_block_id == 68 or selected_block_id == 69: # Water/Lava Bucket
+					var fluid_id = 40 if selected_block_id == 68 else 41
+					var fluid_place_pos = point + normal * 0.1
+					voxel_world.set_voxel.rpc(fluid_place_pos, fluid_id)
+					if inventory:
+						inventory.remove_item(selected_block_id, 1)
+						inventory.add_item(67, 1)
+					show_message("Bucket emptied")
+					ActionLog.log_event("Ведро опустошено")
+					await get_tree().create_timer(0.3).timeout
+					return
+
 			# 3. Block Entity Interaction
 			var entity = voxel_world.get_block_entity(Vector3i(x, y, z))
 			if entity and entity.has_method("interact"):
@@ -790,6 +821,22 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 		if harvest_inv: harvest_inv.add_item(70, 1) # Berries
 		show_message("Harvested Berries")
 		ActionLog.log_event("Подобрано: Berries x1")
+	# Iron Ore (id 6) drops Raw Iron (id 62), not the ore block itself --
+	# mirrors real smelting: mine ore -> raw material -> Furnace -> ingot
+	# (see ItemDatabase.gd id 62/63 and Furnace.gd's get_smelting_result).
+	# Kept as its own branch rather than added to COLLECTIBLE_BLOCK_IDS
+	# below, which drops the block's own item id -- Iron Ore dropping
+	# itself would skip the raw-material step entirely.
+	elif block_type == 6: # Iron Ore
+		if harvest_inv: harvest_inv.add_item(62, 1) # Raw Iron
+		ActionLog.log_event("Подобрано: Raw Iron x1")
+	# Amethyst Ore (85, new) drops Amethyst Shard (66) -- a gem, not a
+	# metal, so no raw-material/smelting step, just its own distinct drop
+	# item (same shape as the Iron branch above, not added to
+	# COLLECTIBLE_BLOCK_IDS below).
+	elif block_type == 85: # Amethyst Ore
+		if harvest_inv: harvest_inv.add_item(66, 1) # Amethyst Shard
+		ActionLog.log_event("Подобрано: Amethyst Shard x1")
 	# Generic collectible pickup: the decorative flowers and the wave-2
 	# mineral ores are each their own block+item (id == block_id, see
 	# ItemDatabase.gd), so breaking one yields itself into the inventory --
