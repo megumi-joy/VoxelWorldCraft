@@ -184,6 +184,36 @@ func _ready():
 	amethyst_shard.type = item_data_type.ItemType.RESOURCE
 	items[66] = amethyst_shard
 
+	# ID 67-69: Buckets. TOOL type (not a mining tool -- tool_type stays
+	# ""), non-stackable, matching Sword's stackable=false. RMB handling
+	# (fill from a Water/Lava source, place from a full bucket) lives in
+	# Player.gd's manual_interaction_check, in the same "Tool Logic"
+	# section as the Hoe (id 33) special-case right above it -- see that
+	# file. Water (40) and Lava (41) already exist as placeable
+	# items/blocks (see the "Nature & Fluids" section above); a bucket
+	# just moves an existing source block instead of consuming an
+	# inventory item to place a new one.
+	var bucket_empty = item_data_type.new()
+	bucket_empty.id = 67
+	bucket_empty.name = "Bucket"
+	bucket_empty.type = item_data_type.ItemType.TOOL
+	bucket_empty.stackable = false
+	items[67] = bucket_empty
+
+	var bucket_water = item_data_type.new()
+	bucket_water.id = 68
+	bucket_water.name = "Water Bucket"
+	bucket_water.type = item_data_type.ItemType.TOOL
+	bucket_water.stackable = false
+	items[68] = bucket_water
+
+	var bucket_lava = item_data_type.new()
+	bucket_lava.id = 69
+	bucket_lava.name = "Lava Bucket"
+	bucket_lava.type = item_data_type.ItemType.TOOL
+	bucket_lava.stackable = false
+	items[69] = bucket_lava
+
 	# ID 30-33: Wooden Tools
 	# NOTE: this dict used to be built and then never actually turned into
 	# ItemData entries below -- items 30-33 didn't exist in `items` at all,

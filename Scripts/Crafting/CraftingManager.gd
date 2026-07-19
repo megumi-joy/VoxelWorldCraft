@@ -46,6 +46,13 @@ func _ready():
 		"output": {"id": 12, "count": 1}
 	})
 
+	# 3 Iron Ingot -> Bucket (Empty, 67). Ties the bucket to the iron chain
+	# above, as asked.
+	recipes.append({
+		"input": [{"id": 63, "count": 3}],
+		"output": {"id": 67, "count": 1}
+	})
+
 func can_craft(recipe_index: int, inventory: Node) -> bool:
 	if recipe_index < 0 or recipe_index >= recipes.size(): return false
 	var recipe = recipes[recipe_index]
