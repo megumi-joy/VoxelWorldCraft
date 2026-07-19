@@ -8,6 +8,20 @@
 ; showed up as a large white foam/interpenetration mass at the coastline.
 ; Everything else (textures, foam/refraction params, colors) is unchanged
 ; from the original CC0/MIT addon material.
+;
+; VoxelWorldCraft render-step-2 retune: FoamWaveSteepnesses (the ONLY
+; FoamWave* param that reaches foam_alpha -- P_DEG().y = Steepness*sin(...);
+; Amplitude only feeds .x/.z, not .y) were still at the addon's vast-open-sea
+; magnitude. Two of the six waves are also very low frequency (0.002/0.008,
+; wavelength 500/125 world units) -- basically a near-constant bias across
+; this whole ~150-unit world instead of a localized cap pattern, which read
+; as broad white fields covering open water rather than whitecap texture.
+; Scaled all six steepnesses down 5x so whitecap coverage is sparse/patchy
+; at this scale; shore foam (shader_parameter/shore_start_blend/
+; shore_end_blend below, plus the vertical-cliff XZ mask in
+; addons/boujie_water_shader/shader/water.gdshader) is unchanged -- it was
+; already a thin correctly-scaled band, just visually drowned out by the
+; oversaturated whitecap foam.
 
 [ext_resource type="Shader" path="res://addons/boujie_water_shader/shader/water.gdshader" id="1_l73mt"]
 [ext_resource type="Texture2D" uid="uid://dck2b16gulx5d" path="res://addons/boujie_water_shader/shader/ocean_albedo_white_highcontrast.png" id="2_8jfpx"]
@@ -64,7 +78,7 @@ shader_parameter/WaveFrequencies = PackedFloat32Array(0.05, 2, 0.12, 0.12)
 shader_parameter/WaveSpeeds = PackedFloat32Array(1, 1, 1.6, 3)
 shader_parameter/WavePhases = PackedFloat32Array(0, 0, 0, 0)
 shader_parameter/FoamWaveCount = 6
-shader_parameter/FoamWaveSteepnesses = PackedFloat32Array(2, 0.45, 1.3, 1.5, 0.7, 0.45)
+shader_parameter/FoamWaveSteepnesses = PackedFloat32Array(0.4, 0.09, 0.26, 0.3, 0.14, 0.09)
 shader_parameter/FoamWaveAmplitudes = PackedFloat32Array(0.5, 0.233, 0.667, 0.333, 0.333, 0.233)
 shader_parameter/FoamWaveDirectionsDegrees = PackedFloat32Array(15, 281.195, 88.25, 151.5, 25, 315)
 shader_parameter/FoamWaveFrequencies = PackedFloat32Array(0.04, 0.06, 0.002, 0.008, 0.01, 0.12)
