@@ -44,7 +44,7 @@ func create_chunk(pos: Vector2i):
 	chunk.set_script(ChunkScript)
 	
 	if chunk.has_method("setup"):
-		chunk.setup(pos, noise, chunk_material)
+		chunk.setup(pos, noise, chunk_material, self)
 		add_child(chunk)
 		chunk.global_position = Vector3(pos.x * 16.0, 0, pos.y * 16.0)
 		chunks[pos] = chunk

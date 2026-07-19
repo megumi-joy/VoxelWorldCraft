@@ -18,12 +18,23 @@ var moisture_noise: FastNoiseLite
 var material: StandardMaterial3D
 var world_node: Node3D 
 
-func setup(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D):
+func setup(pos: Vector2i, _noise: FastNoiseLite, _material: StandardMaterial3D, _world_node: Node3D = null):
 	chunk_position = pos
 	noise = _noise
 	material = _material
-	world_node = get_parent()
-	
+	# world_node used to be captured via get_parent() here, but setup() runs
+	# before VoxelWorld.create_chunk() add_child()s this chunk (deliberately --
+	# setup() has to run first so _ready() sees valid chunk_position/noise/
+	# material when add_child() synchronously fires it), so get_parent() was
+	# always null at this point. Every cross-chunk neighbor lookup in
+	# has_voxel() therefore silently fell through to "no voxel", so every
+	# chunk-border face got rendered as if the neighboring chunk were empty --
+	# redundant/z-fighting double geometry at every chunk seam. Accept the
+	# owning VoxelWorld explicitly instead of relying on tree-parenting
+	# timing; get_parent() stays as a fallback for any other caller that
+	# really does set up a chunk after parenting it.
+	world_node = _world_node if _world_node else get_parent()
+
 	moisture_noise = FastNoiseLite.new()
 	moisture_noise.seed = noise.seed + 12345
 	moisture_noise.frequency = 0.005 # Large biome patches
