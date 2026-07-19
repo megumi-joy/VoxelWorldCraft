@@ -130,6 +130,25 @@ func _ready():
 	sticks.type = item_data_type.ItemType.RESOURCE
 	items[23] = sticks
 
+	# ID 62-63: Iron smelting chain. Iron Ore (id 6) already exists as a
+	# BLOCK and already generates underground (see Chunk.gd's ORE_TABLE) --
+	# it just wasn't collectible (not in Player.gd's COLLECTIBLE_BLOCK_IDS,
+	# so mining it dropped nothing). Raw Iron is the new mined drop (see
+	# Player.gd's _process_mining), smelted in the Furnace into Iron Ingot
+	# (see Furnace.gd's get_smelting_result -- this replaces its old
+	# hardcoded "input 6 -> 1, for test" placeholder).
+	var raw_iron = item_data_type.new()
+	raw_iron.id = 62
+	raw_iron.name = "Raw Iron"
+	raw_iron.type = item_data_type.ItemType.RESOURCE
+	items[62] = raw_iron
+
+	var iron_ingot = item_data_type.new()
+	iron_ingot.id = 63
+	iron_ingot.name = "Iron Ingot"
+	iron_ingot.type = item_data_type.ItemType.RESOURCE
+	items[63] = iron_ingot
+
 	# ID 30-33: Wooden Tools
 	# NOTE: this dict used to be built and then never actually turned into
 	# ItemData entries below -- items 30-33 didn't exist in `items` at all,

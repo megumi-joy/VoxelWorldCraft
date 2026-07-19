@@ -38,6 +38,14 @@ func _ready():
 		"output": {"id": 23, "count": 4}
 	})
 
+	# 2 Iron Ingot + 1 Sticks -> Iron Sword. Item 12 (Iron Sword) existed in
+	# ItemDatabase.gd with no recipe anywhere -- gives Iron Ingot (63) an
+	# actual crafting use instead of introducing a brand new consumer item.
+	recipes.append({
+		"input": [{"id": 63, "count": 2}, {"id": 23, "count": 1}],
+		"output": {"id": 12, "count": 1}
+	})
+
 func can_craft(recipe_index: int, inventory: Node) -> bool:
 	if recipe_index < 0 or recipe_index >= recipes.size(): return false
 	var recipe = recipes[recipe_index]

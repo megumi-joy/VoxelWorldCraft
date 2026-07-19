@@ -796,6 +796,15 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 		if harvest_inv: harvest_inv.add_item(70, 1) # Berries
 		show_message("Harvested Berries")
 		ActionLog.log_event("Подобрано: Berries x1")
+	# Iron Ore (id 6) drops Raw Iron (id 62), not the ore block itself --
+	# mirrors real smelting: mine ore -> raw material -> Furnace -> ingot
+	# (see ItemDatabase.gd id 62/63 and Furnace.gd's get_smelting_result).
+	# Kept as its own branch rather than added to COLLECTIBLE_BLOCK_IDS
+	# below, which drops the block's own item id -- Iron Ore dropping
+	# itself would skip the raw-material step entirely.
+	elif block_type == 6: # Iron Ore
+		if harvest_inv: harvest_inv.add_item(62, 1) # Raw Iron
+		ActionLog.log_event("Подобрано: Raw Iron x1")
 	# Generic collectible pickup: the decorative flowers and the wave-2
 	# mineral ores are each their own block+item (id == block_id, see
 	# ItemDatabase.gd), so breaking one yields itself into the inventory --
