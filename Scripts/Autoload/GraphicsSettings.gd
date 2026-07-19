@@ -126,6 +126,30 @@ var shadow_quality: int = ShadowQuality.LOW
 var aa_mode: int = AAMode.FXAA
 var view_distance: int = 4
 
+# ---- Weather/Foliage VFX (WeatherSystem.gd / FoliageRenderer.gd) ----
+# Deliberately NOT part of the Preset/PRESETS bundle above -- these are
+# ambient-VFX toggles, orthogonal to the SDFGI/SSR/shadow/AA render-quality
+# axis, so apply_preset() never touches them and they never flip `preset`
+# to Custom. WeatherSystem.gd/FoliageRenderer.gd PULL these fields directly
+# (`GraphicsSettings.weather_enabled` etc.) every frame/scan tick rather
+# than this file pushing into them, so there's no autoload-init-order
+# dependency in either direction (see WeatherSystem.gd's header comment).
+var weather_enabled: bool = true
+var weather_intensity: float = 0.6
+var foliage_enabled: bool = true
+
+func set_weather_enabled(v: bool) -> void:
+	weather_enabled = v
+	_save_to_disk()
+
+func set_weather_intensity(v: float) -> void:
+	weather_intensity = clampf(v, 0.0, 1.0)
+	_save_to_disk()
+
+func set_foliage_enabled(v: bool) -> void:
+	foliage_enabled = v
+	_save_to_disk()
+
 # Guard so apply_preset()'s own field writes don't re-flag themselves back
 # to Preset.CUSTOM via the individual setters' _mark_custom() calls.
 var _applying_preset := false
@@ -334,6 +358,9 @@ func _load_from_disk() -> void:
 	shadow_quality = clampi(int(cfg.get_value(SECTION, "shadow_quality", shadow_quality)), 0, 2)
 	aa_mode = clampi(int(cfg.get_value(SECTION, "aa_mode", aa_mode)), 0, 3)
 	view_distance = clampi(int(cfg.get_value(SECTION, "view_distance", view_distance)), VIEW_DISTANCE_MIN, VIEW_DISTANCE_MAX)
+	weather_enabled = bool(cfg.get_value(SECTION, "weather_enabled", weather_enabled))
+	weather_intensity = clampf(float(cfg.get_value(SECTION, "weather_intensity", weather_intensity)), 0.0, 1.0)
+	foliage_enabled = bool(cfg.get_value(SECTION, "foliage_enabled", foliage_enabled))
 
 func _save_to_disk() -> void:
 	var cfg := ConfigFile.new()
@@ -348,4 +375,7 @@ func _save_to_disk() -> void:
 	cfg.set_value(SECTION, "shadow_quality", shadow_quality)
 	cfg.set_value(SECTION, "aa_mode", aa_mode)
 	cfg.set_value(SECTION, "view_distance", view_distance)
+	cfg.set_value(SECTION, "weather_enabled", weather_enabled)
+	cfg.set_value(SECTION, "weather_intensity", weather_intensity)
+	cfg.set_value(SECTION, "foliage_enabled", foliage_enabled)
 	cfg.save(SETTINGS_PATH)
