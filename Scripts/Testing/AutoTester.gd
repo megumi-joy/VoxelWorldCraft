@@ -71,6 +71,18 @@ func find_player():
 		await get_tree().create_timer(1.0).timeout
 		find_player()
 
+## AutoTester is an autoload, so _ready() runs before MainMenu/World.tscn
+## are ever loaded -- a one-shot get_node_or_null("/root/World/VoxelWorld")
+## in _ready() always finds nothing and `world` was staying null for the
+## rest of the run (silently: no error, just chunks always reporting 0 and
+## scan_and_gather() always bailing out via `if not world: return
+## Vector3.ZERO`). Re-resolve lazily on every use instead of once at boot,
+## same idea as the retry loop already used for `player` above.
+func _get_world():
+	if not world:
+		world = get_node_or_null("/root/World/VoxelWorld")
+	return world
+
 var active_action_timer = 0.0
 
 func _process(delta):
@@ -141,10 +153,11 @@ func execute_command(cmd):
 			for i in range(cmd.get("count", 1)):
 				craft_item(cmd["recipe_idx"])
 	
+	var w = _get_world()
 	var metrics = {
 		"fps": Engine.get_frames_per_second(),
 		"pos": str(player.global_position) if player else "N/A",
-		"chunks": world.chunks.size() if world else 0,
+		"chunks": w.chunks.size() if w else 0,
 		"health": player.stats.health if player and player.get("stats") else 0,
 		"inv": get_inventory_summary()
 	}
@@ -184,13 +197,14 @@ func scan_and_gather(block_id: int, target_count: int):
 		take_screenshot("gathered_%d" % block_id)
 
 func find_nearest_block(id: int) -> Vector3:
-	if not world: return Vector3.ZERO
+	var w = _get_world()
+	if not w: return Vector3.ZERO
 	var p_pos = player.global_position
 	for x in range(-16, 16):
 		for z in range(-16, 16):
 			for y in range(60, 100):
 				var check_pos = Vector3(floor(p_pos.x) + x, y, floor(p_pos.z) + z)
-				if player.get_block_at(world, check_pos) == id:
+				if player.get_block_at(w, check_pos) == id:
 					return check_pos
 	return Vector3.ZERO
 
@@ -212,13 +226,23 @@ func mock_click(left: bool, times: int):
 	take_screenshot("interaction")
 
 func take_screenshot(label: String):
-	if OS.has_feature("headless"):
-		# In headless mode, we might need to wait for a frame to render if we have a dummy viewport
-		# However, Godot's --headless usually doesn't render unless configured.
-		# For this project, we'll assume the user wants a visible run or a way to verify.
-		pass
-	
+	# OS.has_feature("headless") reads false even under `godot --headless`
+	# with this build/runner (verified: false here while DisplayServer.
+	# get_name() == "headless" and RenderingServer.get_rendering_device()
+	# == null in the same run) -- it was never actually catching the
+	# headless case despite the comment's intent. DisplayServer.get_name()
+	# is the reliable signal: the headless/dummy display has no real
+	# viewport texture to grab, so get_viewport().get_texture().get_image()
+	# returned null and image.save_png() below was a SCRIPT ERROR
+	# (null-instance call) on every single interaction and craft during
+	# headless smoke-test runs. Skip instead of crashing.
+	if DisplayServer.get_name() == "headless":
+		return
+
 	var image = get_viewport().get_texture().get_image()
+	if not image:
+		push_warning("[AutoTester] Screenshot skipped for '%s' -- no viewport image available." % label)
+		return
 	var docs_dir = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
 	var time = Time.get_datetime_string_from_system().replace(":", "-")
 	var path = docs_dir + "/screenshot_%s_%s.png" % [label, time]
