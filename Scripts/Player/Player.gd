@@ -123,10 +123,9 @@ const MENU_PANEL_NAMES := ["InventoryUI", "CraftingUI", "FurnaceUI", "TradingUI"
 @onready var head = $Head
 @onready var camera = $Head/Camera3D
 @onready var raycast = $Head/Camera3D/RayCast3D
-# Used by _is_block_under_feet() below to size the "am I standing on this"
-# check to the player's actual capsule instead of a hardcoded guess. May
-# resolve to null in the setup_nodes() fallback path (that CollisionShape3D
-# is created later than this @onready resolves) -- handled defensively there.
+# The player's capsule collider. May resolve to null in the setup_nodes()
+# fallback path (that CollisionShape3D is created later than this @onready
+# resolves) -- callers null-check it defensively.
 @onready var collision_shape = get_node_or_null("CollisionShape3D")
 
 @onready var stats = $PlayerStats # Ensure this matches Scene tree
@@ -157,8 +156,8 @@ func _ready():
 	# manual_interaction_check()'s "collider has take_damage()" branch and
 	# called self.take_damage() every frame -> a death loop with
 	# cause="damage" (the real "копание вниз убивает"). Excluding self also
-	# ROUTES the down-ray to the terrain below, so _process_mining() /
-	# _is_block_under_feet() finally engage when digging down.
+	# ROUTES the down-ray to the terrain below, so _process_mining() targets
+	# the block under you and digging straight down works.
 	if raycast:
 		raycast.add_exception(self)
 
@@ -621,12 +620,11 @@ func touch_jump() -> void:
 	_touch_jump_requested = true
 
 # Hold-to-mine state for manual_interaction_check()/_process_mining() below:
-# the single voxel currently targeted for breaking, how long LMB has
-# continuously held it, and whether that target is the one currently refused
-# (see _is_block_under_feet()). Reset on target change / LMB release /
-# raycast miss, so aiming at a new block, letting go, or looking away always
-# cancels progress -- there is exactly one of these tracked at a time, so
-# only ever one block can be mid-break.
+# the single voxel currently targeted for breaking and how long LMB has
+# continuously held it. Reset on target change / LMB release / raycast miss,
+# so aiming at a new block, letting go, or looking away always cancels
+# progress -- there is exactly one of these tracked at a time, so only ever
+# one block can be mid-break.
 var _mining_block: Vector3i = Vector3i.ZERO
 var _mining_progress: float = 0.0
 var _mining_blocked: bool = false
@@ -767,17 +765,13 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 		_mining_blocked = false
 		Telemetry.log_event("target_changed", {"block_id": block_type})
 
-	if _is_block_under_feet(block_coord.x, block_coord.y, block_coord.z):
-		# Refuse outright -- this is exactly what let digging straight down
-		# turn into "копание вниз убивает": chain-break the block supporting
-		# you, drop onto the next one down, repeat all the way past bedrock
-		# into the void (see VOID_FALL_Y). Staircase/side mining is
-		# unaffected since it never targets your own supporting block.
-		if not _mining_blocked:
-			_mining_blocked = true
-			show_message("Can't mine the block you're standing on")
-		return
-
+	# Digging straight down under yourself is intentional Minecraft-standard
+	# play (owner mid=695). It is SAFE now: the death loop was never the fall
+	# itself -- it was the interaction ray self-hitting the player
+	# (fixed via raycast.add_exception(self)). You drop one block onto the
+	# next, respawn lands on ground if you ever fall out, and the hold-to-mine
+	# delay + single-target reset (the target changes as you fall) naturally
+	# throttle it -- no instant chain into the void. So NO under-feet refusal.
 	_mining_blocked = false
 	_mining_progress += delta
 
@@ -811,24 +805,6 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	SoundCaptions.caption("[Копание]")
 	Telemetry.log_event("block_broken", {"block_id": block_type})
 	voxel_world.set_voxel.rpc(block_pos, 0)
-
-## True while (block_x, block_y, block_z) is the voxel directly supporting
-## the player's feet in their current column, and the player is actually
-## grounded on it -- see _process_mining() above for why this matters. A
-## 1-block band below the feet (not just the single nearest voxel) absorbs
-## float slop in exactly where global_position.y lands relative to the
-## capsule's true bottom after floor-snapping, rather than needing
-## pixel-exact math tied to a specific collision pivot.
-func _is_block_under_feet(block_x: int, block_y: int, block_z: int) -> bool:
-	if not is_on_floor():
-		return false
-	if block_x != int(floor(global_position.x)) or block_z != int(floor(global_position.z)):
-		return false
-	var half_height := 1.0 # CapsuleShape3D default (height 2.0) -- see Scenes/Player.tscn
-	if collision_shape and collision_shape.shape is CapsuleShape3D:
-		half_height = collision_shape.shape.height / 2.0
-	var feet_floor := int(floor(global_position.y - half_height))
-	return block_y <= feet_floor and block_y >= feet_floor - 1
 
 func toggle_ai():
 	ai_enabled = not ai_enabled
