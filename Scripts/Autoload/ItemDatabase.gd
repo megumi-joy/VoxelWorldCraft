@@ -149,6 +149,41 @@ func _ready():
 	iron_ingot.type = item_data_type.ItemType.RESOURCE
 	items[63] = iron_ingot
 
+	# ID 64-65: Gold/Copper Ingots. Gold Ore (81) and Copper Ore (80)
+	# already existed, already generate underground (Chunk.gd ORE_TABLE),
+	# and are already collectible + trigger Field Journal discovery (see
+	# COLLECTIBLE_BLOCK_IDS in Player.gd and CodexDatabase.gd's
+	# "gold_ore"/"copper_ore" entries, both keyed on item id 81/80).
+	# Smelting takes those existing ore items directly as Furnace input
+	# (see Furnace.gd) rather than introducing separate "Raw Gold"/"Raw
+	# Copper" drops the way Iron does above -- routing the mined drop
+	# through a new raw-material id (like Iron Ore, which had no
+	# collectible/Codex behavior to begin with) would silently break
+	# existing gold/copper discovery, since players would stop ever
+	# receiving item 80/81 into their inventory. See PR description for
+	# the faithful-but-heavier alternative (separate raw items + re-keying
+	# CodexDatabase.item_to_species).
+	var gold_ingot = item_data_type.new()
+	gold_ingot.id = 64
+	gold_ingot.name = "Gold Ingot"
+	gold_ingot.type = item_data_type.ItemType.RESOURCE
+	items[64] = gold_ingot
+
+	var copper_ingot = item_data_type.new()
+	copper_ingot.id = 65
+	copper_ingot.name = "Copper Ingot"
+	copper_ingot.type = item_data_type.ItemType.RESOURCE
+	items[65] = copper_ingot
+
+	# ID 66: Amethyst Shard -- dropped by mining Amethyst Ore (85, new
+	# below). A gem, not a metal: no smelting, just a collectible/crafting
+	# resource.
+	var amethyst_shard = item_data_type.new()
+	amethyst_shard.id = 66
+	amethyst_shard.name = "Amethyst Shard"
+	amethyst_shard.type = item_data_type.ItemType.RESOURCE
+	items[66] = amethyst_shard
+
 	# ID 30-33: Wooden Tools
 	# NOTE: this dict used to be built and then never actually turned into
 	# ItemData entries below -- items 30-33 didn't exist in `items` at all,
@@ -286,6 +321,22 @@ func _ready():
 		m.block_id = mid
 		items[mid] = m
 
+	# ID 85: Amethyst Ore. Same block+worldgen shape as the wave-2 minerals
+	# above (id == block_id, generated in Chunk.gd's ORE_TABLE, pickaxe
+	# category), but registered separately -- unlike 80-84, this one is NOT
+	# in Player.gd's COLLECTIBLE_BLOCK_IDS (mining it does not drop itself)
+	# and has no CodexDatabase entry. It drops Amethyst Shard (66) via its
+	# own mining branch instead, and Codex/Field Journal wiring is left as
+	# a follow-up (same deliberate scope cut as Torch/Sheep -- see PR
+	# description), so this entry exists mainly for world-reference
+	# completeness (matching every other block having an item id).
+	var amethyst_ore = item_data_type.new()
+	amethyst_ore.id = 85
+	amethyst_ore.name = "Amethyst Ore"
+	amethyst_ore.type = item_data_type.ItemType.BLOCK
+	amethyst_ore.block_id = 85
+	items[85] = amethyst_ore
+
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements
 	var elements = ["Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium", "Aluminum", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium", "Indium", "Tin", "Antimony", "Tellurium", "Iodine", "Xenon", "Cesium", "Barium", "Lanthanum", "Cerium", "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium", "Iridium", "Platinum", "Gold", "Mercury", "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon", "Francium", "Radium", "Actinium", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium", "Roentgenium", "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson"]
@@ -323,6 +374,7 @@ const BLOCK_TOOL_CATEGORY = {
 	82: "pickaxe", # Quartz
 	83: "pickaxe", # Hematite
 	84: "pickaxe", # Malachite Ore
+	85: "pickaxe", # Amethyst Ore
 	4: "axe",      # Wood (Oak Log)
 	13: "axe",     # Planks
 	48: "axe",     # Birch Wood

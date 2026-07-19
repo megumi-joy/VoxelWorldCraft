@@ -124,6 +124,11 @@ func _ready():
 	generate_texture(image, 6, 5, Color(0.5, 0.5, 0.5), 0.1)
 	add_lines(image, 6, 5, Color(0.03, 0.35, 0.15))
 	add_spots(image, 6, 5, Color(0.05, 0.55, 0.25), 14)
+	# Amethyst Ore (ID 85): violet crystal base + brighter lilac facet
+	# spots -- grey host rock would undersell "gem", so this one skips the
+	# usual neutral base and goes straight to purple.
+	generate_texture(image, 7, 5, Color(0.5, 0.32, 0.68), 0.15)
+	add_spots(image, 7, 5, Color(0.78, 0.55, 0.95), 12)
 
 	# Save and Apply
 	var texture = ImageTexture.create_from_image(image)

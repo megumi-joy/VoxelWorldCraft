@@ -805,6 +805,13 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	elif block_type == 6: # Iron Ore
 		if harvest_inv: harvest_inv.add_item(62, 1) # Raw Iron
 		ActionLog.log_event("Подобрано: Raw Iron x1")
+	# Amethyst Ore (85, new) drops Amethyst Shard (66) -- a gem, not a
+	# metal, so no raw-material/smelting step, just its own distinct drop
+	# item (same shape as the Iron branch above, not added to
+	# COLLECTIBLE_BLOCK_IDS below).
+	elif block_type == 85: # Amethyst Ore
+		if harvest_inv: harvest_inv.add_item(66, 1) # Amethyst Shard
+		ActionLog.log_event("Подобрано: Amethyst Shard x1")
 	# Generic collectible pickup: the decorative flowers and the wave-2
 	# mineral ores are each their own block+item (id == block_id, see
 	# ItemDatabase.gd), so breaking one yields itself into the inventory --

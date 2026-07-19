@@ -96,6 +96,13 @@ func get_smelting_result(input_id: int) -> int:
 	# Raw Iron (62, dropped by mining Iron Ore -- see Player.gd's
 	# _process_mining and ItemDatabase.gd) -> Iron Ingot (63).
 	if input_id == 62: return 63
+	# Gold Ore (81) -> Gold Ingot (64); Copper Ore (80) -> Copper Ingot
+	# (65). These smelt the existing ore item directly rather than a
+	# separate "Raw Gold"/"Raw Copper" drop -- see ItemDatabase.gd's ID
+	# 64-65 comment for why (preserves existing collectible/Field Journal
+	# discovery behavior on items 80/81).
+	if input_id == 81: return 64
+	if input_id == 80: return 65
 	return 0
 
 func get_fuel_time(fuel_id: int) -> float:
