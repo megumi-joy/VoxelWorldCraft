@@ -28,6 +28,8 @@ GraphicsSettings="*res://Scripts/Autoload/GraphicsSettings.gd"
 ActionLog="*res://Scripts/Autoload/ActionLog.gd"
 SoundCaptions="*res://Scripts/Autoload/SoundCaptions.gd"
 Telemetry="*res://Scripts/Autoload/Telemetry.gd"
+WeatherSystem="*res://Scripts/Autoload/WeatherSystem.gd"
+FoliageRenderer="*res://Scripts/Autoload/FoliageRenderer.gd"
 
 [display]
 
