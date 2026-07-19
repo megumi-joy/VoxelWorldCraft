@@ -48,6 +48,18 @@ extends CharacterBody3D
 @export_range(0.0, 0.95) var look_smoothing: float = 0.3
 @export var mouse_sensitivity: float = 0.003
 
+@export_group("Step Climb")
+# CharacterBody3D has no built-in stair-stepping -- move_and_slide() treats a
+# single 1-block-tall voxel ledge exactly like a wall. In a voxel world that
+# is nearly every hill, grass tuft, or door sill, so without this the player
+# walks into it and stops dead: reads to a player as "getting stuck" even
+# though nothing is actually wrong, just an un-climbable ledge. Slightly
+# above one full voxel (1.0) so a full single-block step still clears with a
+# hair of margin. See _apply_step_climb() below (Mob.gd has its own
+# jump-based version of this same problem -- "Obstacle Avoidance (Auto
+# Jump)" -- which is corroborating evidence ledges are a known snag here).
+@export var step_height: float = 1.1
+
 # Get the gravity from the project settings to be synced with RigidBody nodes.
 var gravity = ProjectSettings.get_setting("physics/3d/default_gravity")
 
@@ -59,6 +71,20 @@ var _bob_time: float = 0.0
 var _camera_base_local_pos: Vector3 = Vector3.ZERO
 var _base_fov: float = 75.0
 var _smoothed_look_delta: Vector2 = Vector2.ZERO
+
+# Respawn point used both for the normal death respawn and the void-fall
+# catch below -- kept as one constant so both paths can never drift apart.
+const SPAWN_POSITION := Vector3(0, 100, 0)
+
+# Void-fall catch: if the player ends up below all real terrain (bedrock is
+# always y=0, see Chunk.gd's generate_data()) -- e.g. walking off the edge
+# of a not-yet-generated chunk, or any other way to end up outside the
+# collidable world -- respawn instead of free-falling forever. Comfortably
+# below bedrock so it never fires from legitimate terrain/caves.
+const VOID_FALL_Y := -10.0
+# Guards against re-triggering every physics frame while still below the
+# threshold; cleared once _on_death() respawns the player back above it.
+var _void_fall_handled: bool = false
 
 # Mouse-capture UX state (see _unhandled_input/_notification below). True
 # only while the player deliberately released the cursor via Esc -- lets a
@@ -405,17 +431,71 @@ func _physics_process(delta):
 	_apply_head_bob(delta)
 	_apply_sprint_fov(delta, is_sprinting)
 
+	# Must run before move_and_slide(): it pre-lifts the body over a short
+	# ledge so the same move_and_slide() call below clears it, instead of
+	# discovering the ledge as a wall a frame later.
+	_apply_step_climb(delta)
+
 	move_and_slide()
 
 	# Fix jitter: If the player is on floor, stop subtle vertical movement
 	if is_on_floor() and velocity.y < 0:
 		velocity.y = 0
 
+	_check_void_fall()
+
 	# Runs in both manual and AI mode: real clicks drive it in manual mode,
 	# mock_left_click/mock_right_click (set externally, e.g. by AutoTester or
 	# an AI driver) drive it in AI mode -- previously gated to manual-only,
 	# which meant a bot/AI could never trigger the mocked tool interaction.
 	manual_interaction_check()
+
+## Minecraft-style auto-step: while grounded and moving into something that
+## blocks flat horizontal motion, check whether it's actually just a short
+## ledge (clear headroom + clear forward path one step up) and, if so, nudge
+## the body up by the ledge's exact height so it climbs instead of stopping.
+## Leaves genuine walls/overhangs alone (headroom or forward-at-height check
+## fails) so this can't be used to clip through anything solid.
+func _apply_step_climb(delta: float) -> void:
+	if not is_on_floor():
+		return
+	var horizontal = Vector3(velocity.x, 0.0, velocity.z)
+	if horizontal.length() < 0.01:
+		return
+
+	var motion = horizontal * delta
+	# Nothing in the way at current height -- ordinary move_and_slide()
+	# handles this frame fine, no step assist needed.
+	if not test_move(global_transform, motion):
+		return
+
+	# Something blocks flat movement. Only treat it as a climbable ledge if
+	# there's clear headroom one step up AND clear room to move forward from
+	# up there -- otherwise it's a real wall/overhang and we leave it alone.
+	var raised = global_transform.translated(Vector3(0, step_height, 0))
+	if test_move(raised, Vector3.ZERO):
+		return
+	if test_move(raised, motion):
+		return
+
+	# Sweep back down from the raised, forward-moved position to find the
+	# ledge's exact height, so the step lands flush on top of the block
+	# instead of hovering or over/under-shooting on partial-height ledges.
+	var probe = raised.translated(motion)
+	var down_collision = KinematicCollision3D.new()
+	if test_move(probe, Vector3(0, -step_height, 0), down_collision):
+		var step_up = step_height + down_collision.get_travel().y
+		if step_up > 0.01 and step_up <= step_height:
+			global_position.y += step_up
+			apply_floor_snap()
+
+## See VOID_FALL_Y above. Routes through the same death/respawn feedback
+## path as a normal death (_on_death) so a void fall always gets a clear
+## on-screen reason instead of the player just silently reappearing.
+func _check_void_fall() -> void:
+	if global_position.y < VOID_FALL_Y and not _void_fall_handled:
+		_void_fall_handled = true
+		_on_death("void")
 
 func _apply_horizontal_movement(delta: float, input_dir: Vector2, is_sprinting: bool) -> void:
 	var horizontal = Vector2(velocity.x, velocity.z)
@@ -690,13 +770,34 @@ func show_message(text: String):
 		if label and label.text == text:
 			label.text = ""
 
-func take_damage(amount: float):
+func take_damage(amount: float, cause: String = "damage"):
 	if stats:
-		stats.take_damage(amount)
+		stats.take_damage(amount, cause)
 
-func _on_death():
-	show_message("YOU DIED! Respawning...")
+## Human-readable reason for the death/respawn screen -- the whole point of
+## this map is that "why did I just respawn" (mob hit vs. starvation vs.
+## falling out of the world) is never left to guesswork. See PlayerStats.
+## take_damage()'s cause param and _check_void_fall() above for the callers.
+const DEATH_REASONS := {
+	"mob": "Killed by a mob",
+	"hunger": "Starved",
+	"void": "Fell out of the world",
+}
+
+func _on_death(cause: String = "damage"):
+	var reason: String = DEATH_REASONS.get(cause, "You died")
+
+	var hud = get_node_or_null("HUD/PlayerHUD")
+	if hud and hud.has_method("show_death_screen"):
+		hud.show_death_screen(reason)
+	else:
+		# Defensive fallback for contexts without the full HUD (see
+		# setup_nodes()) so death is never silent even there.
+		show_message(reason + " -- Respawning...")
+
 	# Simple respawn logic
-	position = Vector3(0, 100, 0)
+	position = SPAWN_POSITION
+	velocity = Vector3.ZERO
 	stats.heal(100)
 	stats.eat(100)
+	_void_fall_handled = false
