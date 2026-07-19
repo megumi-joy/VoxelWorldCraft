@@ -28,10 +28,27 @@ var is_mouse_moving = false
 var user_active_timer = 0.0
 const USER_INACTIVITY_LIMIT = 5.0 # Seconds before bot resumes
 
+# True only when the --run-tests bot is actually active. AutoTester is an
+# autoload, so it's alive (and its overridden _input() auto-receives every
+# key/mouse event, per Godot 4 Node semantics) in EVERY build, not just test
+# runs. _ready() below only ever called set_process(false) to silence the
+# wandering-bot _process() loop when --run-tests wasn't passed -- it never
+# gated _input(), so the "user takeover" branch that forces the mouse cursor
+# visible on any key/click fired in completely normal, non-bot gameplay too:
+# the player's very first WASD press or left-click yanked Input.mouse_mode to
+# MOUSE_MODE_VISIBLE, permanently killing mouse-look (this was PLAY-BREAKING
+# bug #1 -- "mouse not captured in windowed mode"). Gate the whole handler on
+# this flag so AutoTester is fully inert unless the bot was actually asked
+# to run.
+var _testing_active := false
+
 func _input(event):
+	if not _testing_active:
+		return
+
 	if event is InputEventMouseMotion:
 		is_mouse_moving = true
-	
+
 	if event is InputEventKey or event is InputEventMouseButton:
 		if event.is_pressed():
 			# User pressed something, give control
@@ -46,19 +63,20 @@ func _ready():
 	else:
 		# Wait a bit or search
 		call_deferred("find_player")
-	
+
 	world = get_node_or_null("/root/World/VoxelWorld")
-	
+
 	var cm_script = load("res://Scripts/Crafting/CraftingManager.gd")
 	if cm_script:
 		crafting_manager = cm_script.new()
 		add_child(crafting_manager)
-	
+
 	# Check for auto-run arg
 	if not OS.get_cmdline_args().has("--run-tests"):
 		set_process(false) # Disable if not testing
 		print("--- AUTO TESTER IDLE (Use --run-tests to activate) ---")
 	else:
+		_testing_active = true
 		print("--- AUTO TESTER ACTIVATED ---")
 
 func find_player():

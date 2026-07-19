@@ -60,6 +60,23 @@ var _camera_base_local_pos: Vector3 = Vector3.ZERO
 var _base_fov: float = 75.0
 var _smoothed_look_delta: Vector2 = Vector2.ZERO
 
+# Mouse-capture UX state (see _unhandled_input/_notification below). True
+# only while the player deliberately released the cursor via Esc -- lets a
+# click back into the game view re-capture without fighting a menu/panel
+# that owns MOUSE_MODE_VISIBLE for its own reasons (inventory, settings, ...).
+var _manually_released_mouse: bool = false
+
+# Gameplay actions that must never be left "stuck" pressed -- see
+# _release_movement_input() / _notification().
+const MOVEMENT_ACTIONS := ["move_forward", "move_backward", "move_left", "move_right", "jump", "sprint"]
+
+# Control-panel nodes under Player.tscn's "HUD" CanvasLayer (see Scenes/
+# Player.tscn) that each own their own MOUSE_MODE_VISIBLE/CAPTURED toggle on
+# open/close (InventoryUI.gd, SettingsPanel.gd, ...). Used by _is_menu_open()
+# so the click-to-recapture and focus-in-recapture logic below never yanks
+# the cursor back while one of these is actually open.
+const MENU_PANEL_NAMES := ["InventoryUI", "CraftingUI", "FurnaceUI", "TradingUI", "SettingsPanel", "FieldJournalUI"]
+
 @onready var head = $Head
 @onready var camera = $Head/Camera3D
 @onready var raycast = $Head/Camera3D/RayCast3D
@@ -75,6 +92,15 @@ var selected_block_id: int = 1 # Default Dirt
 const COLLECTIBLE_BLOCK_IDS = [53, 54, 80, 81, 82, 83, 84] # Blue/Pink Flower, Copper/Gold/Quartz/Hematite/Malachite
 
 func _ready():
+	# Lock + hide the cursor and start feeding InputEventMouseMotion.relative
+	# to the camera -- works in windowed mode exactly like fullscreen (Godot's
+	# MOUSE_MODE_CAPTURED isn't fullscreen-gated). This alone used to be
+	# undone almost instantly in real play: Scripts/Testing/AutoTester.gd is
+	# an always-loaded autoload whose _input() forced the mouse back to
+	# MOUSE_MODE_VISIBLE on the player's very first keypress or click, even
+	# outside --run-tests bot runs. That's fixed at the source now (AutoTester
+	# gates its whole _input() on the bot actually being active), so this
+	# capture sticks.
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
 	
@@ -236,13 +262,76 @@ func setup_nodes():
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
-		apply_look_delta(event.relative)
+		# Mouse-look only while the cursor is actually captured -- otherwise
+		# a mouse move on the way to click a HUD/menu button would also spin
+		# the camera underneath it. (Touch-drag look bypasses this on purpose
+		# via apply_look_delta() directly from TouchControls.gd -- touch has
+		# no concept of cursor capture.)
+		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+			apply_look_delta(event.relative)
 
 	if event.is_action_pressed("ui_cancel"): # Escape
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+			_manually_released_mouse = true
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			_manually_released_mouse = false
+		return
+
+	# Click back into the game re-captures the mouse after an Esc release.
+	# Only acts on the flag Esc itself sets (not e.g. an inventory panel's own
+	# VISIBLE) and only reaches here at all if no menu Control with
+	# mouse_filter STOP consumed the click first -- Godot routes GUI input to
+	# the scene tree's Controls before _unhandled_input, so an open menu's own
+	# clicks never trigger this.
+	if _manually_released_mouse and event is InputEventMouseButton and event.pressed \
+			and Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE and not _is_menu_open():
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		_manually_released_mouse = false
+
+## True while any of the player's HUD control panels (inventory, crafting,
+## furnace, trading, settings, field journal) is open and owns the visible
+## cursor -- see MENU_PANEL_NAMES above.
+func _is_menu_open() -> bool:
+	var hud = get_node_or_null("HUD")
+	if not hud:
+		return false
+	for panel_name in MENU_PANEL_NAMES:
+		var panel = hud.get_node_or_null(panel_name)
+		if panel and panel.visible:
+			return true
+	return false
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+			_release_movement_input()
+		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_WM_WINDOW_FOCUS_IN:
+			# Defensive re-assert: some platforms silently drop a
+			# MOUSE_MODE_CAPTURED request made while the window doesn't yet
+			# have real OS input focus. Re-apply once focus is confirmed
+			# regained, but never fight a deliberate Esc release, an open
+			# menu, or AI mode (toggle_ai() wants the cursor visible while
+			# the bot drives).
+			if not _manually_released_mouse and not _is_menu_open() and not ai_enabled:
+				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+## Root cause of "keyboard sticks": if a key's release event arrives while
+## the OS window doesn't have focus (alt-tab, clicking another app/the
+## taskbar, ...), Godot never sees the key-up and Input.is_action_pressed()
+## for that action latches true forever -- WASD/jump/sprint read as still
+## held even though the physical key is up, so the player keeps "moving" on
+## its own after focus returns. Force every held gameplay action to release
+## the instant focus is lost so nothing can latch, and zero the horizontal
+## velocity too so movement doesn't keep coasting on the latched input for
+## the one physics frame before the release takes effect.
+func _release_movement_input() -> void:
+	for action in MOVEMENT_ACTIONS:
+		if InputMap.has_action(action):
+			Input.action_release(action)
+	velocity.x = 0.0
+	velocity.z = 0.0
 
 ## Rotates the camera by a raw pixel delta, with the same smoothing curve
 ## mouse-look uses. Shared entry point for mouse motion (above) and
