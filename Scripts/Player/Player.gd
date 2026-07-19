@@ -81,9 +81,17 @@ var _smoothed_look_delta: Vector2 = Vector2.ZERO
 const FOOTSTEP_CAPTION_INTERVAL := 1.8
 var _footstep_caption_cooldown: float = 0.0
 
-# Respawn point used both for the normal death respawn and the void-fall
+# Respawn XZ column used both for the normal death respawn and the void-fall
 # catch below -- kept as one constant so both paths can never drift apart.
-const SPAWN_POSITION := Vector3(0, 100, 0)
+# Y is deliberately NOT a constant: it used to be hardcoded to 100 (so every
+# single death respawned the player ~30-40 units in the sky, however far
+# above whatever the terrain height happens to be at this column, and they'd
+# fall for a couple of seconds before regaining control) -- confusing, and
+# very likely a real chunk of "непонятно че респавнился" (unclear respawn).
+# See _compute_respawn_position() below, which mirrors the exact
+# ground-height formula World.gd's spawn_player() uses for the player's very
+# first spawn, so a death respawn lands gently on the surface the same way.
+const RESPAWN_XZ := Vector2(0, 0)
 
 # Void-fall catch: if the player ends up below all real terrain (bedrock is
 # always y=0, see Chunk.gd's generate_data()) -- e.g. walking off the edge
@@ -115,6 +123,11 @@ const MENU_PANEL_NAMES := ["InventoryUI", "CraftingUI", "FurnaceUI", "TradingUI"
 @onready var head = $Head
 @onready var camera = $Head/Camera3D
 @onready var raycast = $Head/Camera3D/RayCast3D
+# Used by _is_block_under_feet() below to size the "am I standing on this"
+# check to the player's actual capsule instead of a hardcoded guess. May
+# resolve to null in the setup_nodes() fallback path (that CollisionShape3D
+# is created later than this @onready resolves) -- handled defensively there.
+@onready var collision_shape = get_node_or_null("CollisionShape3D")
 
 @onready var stats = $PlayerStats # Ensure this matches Scene tree
 
@@ -138,7 +151,17 @@ func _ready():
 	# capture sticks.
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
-	
+
+	# The interaction ray must never hit the player's own body. Aiming
+	# steeply down made it self-hit this CharacterBody3D, which fell into
+	# manual_interaction_check()'s "collider has take_damage()" branch and
+	# called self.take_damage() every frame -> a death loop with
+	# cause="damage" (the real "копание вниз убивает"). Excluding self also
+	# ROUTES the down-ray to the terrain below, so _process_mining() /
+	# _is_block_under_feet() finally engage when digging down.
+	if raycast:
+		raycast.add_exception(self)
+
 	if stats:
 		stats.died.connect(_on_death)
 
@@ -240,6 +263,11 @@ func setup_nodes():
 	raycast.target_position = Vector3(0, 0, -5)
 	raycast.enabled = true
 	camera.add_child(raycast)
+	# Fallback-path twin of _ready()'s exception: this freshly-created ray
+	# must also ignore the player's own body (see _ready()). setup_nodes()
+	# REPLACES the raycast node, so the exception must be re-added here or
+	# it's lost.
+	raycast.add_exception(self)
 	
 	var col = CollisionShape3D.new()
 	col.name = "CollisionShape3D"
@@ -436,6 +464,11 @@ func _physics_process(delta):
 		velocity.y = jump_velocity
 		_jump_buffer_timer = 0.0
 		_coyote_timer = 0.0
+		# Coarse action telemetry (see mining's "target_changed" below) --
+		# lets a session log show *how* the player was actually moving, not
+		# just what broke/placed, e.g. to tell "stuck standing still" apart
+		# from "jumping around but not going anywhere".
+		Telemetry.log_event("jump", {})
 
 	_apply_head_bob(delta)
 	_apply_sprint_fov(delta, is_sprinting)
@@ -457,7 +490,7 @@ func _physics_process(delta):
 	# mock_left_click/mock_right_click (set externally, e.g. by AutoTester or
 	# an AI driver) drive it in AI mode -- previously gated to manual-only,
 	# which meant a bot/AI could never trigger the mocked tool interaction.
-	manual_interaction_check()
+	manual_interaction_check(delta)
 
 ## Minecraft-style auto-step: while grounded and moving into something that
 ## blocks flat horizontal motion, check whether it's actually just a short
@@ -505,6 +538,21 @@ func _check_void_fall() -> void:
 	if global_position.y < VOID_FALL_Y and not _void_fall_handled:
 		_void_fall_handled = true
 		_on_death("void")
+
+## Ground height at RESPAWN_XZ, using the exact same noise formula World.gd's
+## spawn_player() uses for the player's very first spawn (Chunk.gd fills
+## columns solid from y=0 up to this same height) -- so a death respawn lands
+## the player just above the surface instead of the old hardcoded
+## Vector3(0, 100, 0), which dropped them from the sky on literally every
+## single death regardless of how high the terrain actually is at that spot.
+func _compute_respawn_position() -> Vector3:
+	var voxel_world = get_node_or_null("/root/World/VoxelWorld")
+	if voxel_world and voxel_world.get("noise") and voxel_world.noise:
+		var surface_height = int((voxel_world.noise.get_noise_2d(RESPAWN_XZ.x, RESPAWN_XZ.y) + 1) * 32) + 64
+		return Vector3(RESPAWN_XZ.x, surface_height + 2, RESPAWN_XZ.y)
+	# Fallback if VoxelWorld/noise isn't reachable (e.g. a stripped-down test
+	# scene) -- the same value the old hardcoded constant used.
+	return Vector3(RESPAWN_XZ.x, 100, RESPAWN_XZ.y)
 
 func _apply_horizontal_movement(delta: float, input_dir: Vector2, is_sprinting: bool) -> void:
 	var horizontal = Vector2(velocity.x, velocity.z)
@@ -572,55 +620,52 @@ var _touch_jump_requested: bool = false
 func touch_jump() -> void:
 	_touch_jump_requested = true
 
-func manual_interaction_check():
+# Hold-to-mine state for manual_interaction_check()/_process_mining() below:
+# the single voxel currently targeted for breaking, how long LMB has
+# continuously held it, and whether that target is the one currently refused
+# (see _is_block_under_feet()). Reset on target change / LMB release /
+# raycast miss, so aiming at a new block, letting go, or looking away always
+# cancels progress -- there is exactly one of these tracked at a time, so
+# only ever one block can be mid-break.
+var _mining_block: Vector3i = Vector3i.ZERO
+var _mining_progress: float = 0.0
+var _mining_blocked: bool = false
+
+func manual_interaction_check(delta: float):
 	var left = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or mock_left_click
 	var right = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or mock_right_click
-	
+
+	if not left:
+		# LMB released (or not held this frame) always cancels any
+		# in-progress single-block mining -- see _process_mining() below.
+		_mining_progress = 0.0
+		_mining_blocked = false
+
 	if not left and not right: return
 
 	if not raycast.is_colliding():
-		print("[DBG_INTERACT] no raycast hit, cam_pitch_deg=", rad_to_deg(camera.rotation.x))
+		# Looking away from every block also cancels mining progress.
+		_mining_progress = 0.0
+		_mining_blocked = false
 
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
 		var point = raycast.get_collision_point()
 		var normal = raycast.get_collision_normal()
 		var voxel_world = get_node_or_null("/root/World/VoxelWorld")
-		print("[DBG_INTERACT] hit=", collider, " is_static=", collider is StaticBody3D, " voxel_world=", voxel_world)
 
-		# Left Click: Destroy
+		# Left Click: Destroy (hold-to-mine, single target -- _process_mining()
+		# below owns the delay/single-target/under-feet logic; this call site
+		# only decides what counts as a mineable vs. damageable collider).
 		if left:
 			if collider is StaticBody3D and voxel_world:
-				var block_pos = point - normal * 0.1
-				var block_type = get_block_at(voxel_world, block_pos)
-				var break_speed = get_break_speed(selected_block_id, block_type)
-				var harvest_inv = get_node_or_null("Inventory")
-				# Harvest: breaking a Berry Bush yields Berries (food), not
-				# the bush block itself -- keep this special-cased and
-				# mutually exclusive with the generic collectible pickup
-				# below (elif), or breaking a bush would grant both.
-				if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
-					if harvest_inv: harvest_inv.add_item(70, 1) # Berries
-					show_message("Harvested Berries")
-					ActionLog.log_event("Подобрано: Berries x1")
-				# Generic collectible pickup: the decorative flowers and the
-				# wave-2 mineral ores are each their own block+item (id ==
-				# block_id, see ItemDatabase.gd), so breaking one yields
-				# itself into the inventory -- this is also what feeds Field
-				# Journal discovery (Inventory.item_picked_up ->
-				# PlayerStats.discover_item, see Player._ready()).
-				# Intentionally scoped to just these collectible species
-				# rather than every mineable block (Dirt/Stone/Wood/...)
-				# to keep this change's blast radius limited to wave 2.
-				elif block_type in COLLECTIBLE_BLOCK_IDS:
-					if harvest_inv: harvest_inv.add_item(block_type, 1)
-					ActionLog.log_event("Подобрано: " + _block_display_name(block_type) + " x1")
-				ActionLog.log_event("Сломан блок: " + _block_display_name(block_type))
-				SoundCaptions.caption("[Копание]")
-				Telemetry.log_event("block_broken", {"block_id": block_type})
-				voxel_world.set_voxel.rpc(block_pos, 0)
-				await get_tree().create_timer(break_speed).timeout
-			elif collider.has_method("take_damage"):
+				_process_mining(delta, voxel_world, point, normal)
+			elif collider != self and collider.has_method("take_damage"):
+				# `collider != self`: belt-and-suspenders against the ray
+				# self-hitting the player (add_exception in _ready/setup_nodes
+				# already prevents it) so LMB can never damage the player.
+				_mining_progress = 0.0
+				_mining_blocked = false
 				var item = ItemDatabase.get_item(selected_block_id)
 				var dmg = 10.0
 				if item: dmg += item.damage_value
@@ -701,6 +746,89 @@ func manual_interaction_check():
 				Telemetry.log_event("block_placed", {"block_id": place_block_id})
 				voxel_world.set_voxel.rpc(place_pos, place_block_id)
 				await get_tree().create_timer(0.2).timeout
+
+## Hold-to-mine a single block: LMB must stay aimed at the same voxel for
+## get_break_speed() worth of continuous time before it actually breaks.
+## Previously the block vanished the instant LMB went down, every single
+## physics frame it was held (break_speed was only ever used as a cosmetic
+## *post*-removal wait, after the block was already gone) -- so holding LMB
+## while looking at (and re-aiming down into) the shaft it just opened could
+## chain-break many blocks in under a second. Aiming at a different block
+## always restarts progress at zero -- see _mining_block above, exactly one
+## block is ever tracked/mid-break at a time.
+func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3) -> void:
+	var block_pos = point - normal * 0.1
+	var block_coord := Vector3i(int(floor(block_pos.x)), int(floor(block_pos.y)), int(floor(block_pos.z)))
+	var block_type = get_block_at(voxel_world, block_pos)
+
+	if block_coord != _mining_block:
+		_mining_block = block_coord
+		_mining_progress = 0.0
+		_mining_blocked = false
+		Telemetry.log_event("target_changed", {"block_id": block_type})
+
+	if _is_block_under_feet(block_coord.x, block_coord.y, block_coord.z):
+		# Refuse outright -- this is exactly what let digging straight down
+		# turn into "копание вниз убивает": chain-break the block supporting
+		# you, drop onto the next one down, repeat all the way past bedrock
+		# into the void (see VOID_FALL_Y). Staircase/side mining is
+		# unaffected since it never targets your own supporting block.
+		if not _mining_blocked:
+			_mining_blocked = true
+			show_message("Can't mine the block you're standing on")
+		return
+
+	_mining_blocked = false
+	_mining_progress += delta
+
+	var break_speed = get_break_speed(selected_block_id, block_type)
+	if _mining_progress < break_speed:
+		return # still mid-hold -- not broken yet
+
+	_mining_progress = 0.0
+
+	var harvest_inv = get_node_or_null("Inventory")
+	# Harvest: breaking a Berry Bush yields Berries (food), not the bush
+	# block itself -- keep this special-cased and mutually exclusive with the
+	# generic collectible pickup below (elif), or breaking a bush would grant
+	# both.
+	if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
+		if harvest_inv: harvest_inv.add_item(70, 1) # Berries
+		show_message("Harvested Berries")
+		ActionLog.log_event("Подобрано: Berries x1")
+	# Generic collectible pickup: the decorative flowers and the wave-2
+	# mineral ores are each their own block+item (id == block_id, see
+	# ItemDatabase.gd), so breaking one yields itself into the inventory --
+	# this is also what feeds Field Journal discovery
+	# (Inventory.item_picked_up -> PlayerStats.discover_item, see
+	# Player._ready()). Intentionally scoped to just these collectible
+	# species rather than every mineable block (Dirt/Stone/Wood/...) to keep
+	# this change's blast radius limited to wave 2.
+	elif block_type in COLLECTIBLE_BLOCK_IDS:
+		if harvest_inv: harvest_inv.add_item(block_type, 1)
+		ActionLog.log_event("Подобрано: " + _block_display_name(block_type) + " x1")
+	ActionLog.log_event("Сломан блок: " + _block_display_name(block_type))
+	SoundCaptions.caption("[Копание]")
+	Telemetry.log_event("block_broken", {"block_id": block_type})
+	voxel_world.set_voxel.rpc(block_pos, 0)
+
+## True while (block_x, block_y, block_z) is the voxel directly supporting
+## the player's feet in their current column, and the player is actually
+## grounded on it -- see _process_mining() above for why this matters. A
+## 1-block band below the feet (not just the single nearest voxel) absorbs
+## float slop in exactly where global_position.y lands relative to the
+## capsule's true bottom after floor-snapping, rather than needing
+## pixel-exact math tied to a specific collision pivot.
+func _is_block_under_feet(block_x: int, block_y: int, block_z: int) -> bool:
+	if not is_on_floor():
+		return false
+	if block_x != int(floor(global_position.x)) or block_z != int(floor(global_position.z)):
+		return false
+	var half_height := 1.0 # CapsuleShape3D default (height 2.0) -- see Scenes/Player.tscn
+	if collision_shape and collision_shape.shape is CapsuleShape3D:
+		half_height = collision_shape.shape.height / 2.0
+	var feet_floor := int(floor(global_position.y - half_height))
+	return block_y <= feet_floor and block_y >= feet_floor - 1
 
 func toggle_ai():
 	ai_enabled = not ai_enabled
@@ -836,7 +964,7 @@ func _on_death(cause: String = "damage"):
 	Telemetry.log_event("death", {"cause": cause})
 
 	# Simple respawn logic
-	position = SPAWN_POSITION
+	position = _compute_respawn_position()
 	velocity = Vector3.ZERO
 	stats.heal(100)
 	stats.eat(100)

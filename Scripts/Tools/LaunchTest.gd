@@ -80,3 +80,14 @@ func _ready():
 		touch_driver.name = "TouchControlsDemoDriver"
 		var tree5 := Engine.get_main_loop() as SceneTree
 		tree5.root.add_child(touch_driver)
+
+	# Dig/mining verification + gameplay showcase: walks, looks around,
+	# attempts (and expects refusal of) mining the block under its own feet,
+	# mines a real block with the hold-to-mine delay, places a block, walks
+	# more. See Scripts/Testing/DigMiningDemoDriver.gd. Same "attach under
+	# the tree root" pattern as --movement-demo above, for the same reason.
+	if user_args.has("--dig-demo"):
+		var dig_driver = load("res://Scripts/Testing/DigMiningDemoDriver.gd").new()
+		dig_driver.name = "DigMiningDemoDriver"
+		var tree6 := Engine.get_main_loop() as SceneTree
+		tree6.root.add_child(dig_driver)
