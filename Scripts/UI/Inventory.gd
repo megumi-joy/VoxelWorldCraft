@@ -51,13 +51,33 @@ func add_item(id: int, count: int) -> bool:
 	return false # Could not add all
 
 func remove_item(id: int, count: int) -> bool:
-	# Keep logic simple for now
+	# Sum across ALL matching stacks first, mirroring how
+	# CraftingManager.can_craft() checks affordability (it sums item.count
+	# across every slot with a matching id). The old version only ever
+	# checked/removed from a single slot: if the same item ended up split
+	# across two partial stacks (e.g. a stack hit the 64 cap and the
+	# overflow landed in a second slot), can_craft() would say yes but this
+	# would find no single slot with enough and return false while
+	# craft() -- which ignores remove_item()'s return value -- still handed
+	# out the crafted output. That's a free-item dupe. Drain across as many
+	# matching slots as it takes instead.
+	var total = 0
+	for item in items:
+		if item and item.id == id:
+			total += item.count
+	if total < count:
+		return false
+
+	var remaining = count
 	for i in range(size):
+		if remaining <= 0:
+			break
 		if items[i] and items[i].id == id:
-			if items[i].count >= count:
-				items[i].count -= count
-				if items[i].count == 0:
-					items[i] = null
-				inventory_changed.emit()
-				return true
-	return false
+			var take = min(remaining, items[i].count)
+			items[i].count -= take
+			remaining -= take
+			if items[i].count == 0:
+				items[i] = null
+
+	inventory_changed.emit()
+	return true
