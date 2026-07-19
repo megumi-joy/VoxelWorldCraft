@@ -764,6 +764,16 @@ func manual_interaction_check(delta: float):
 					return
 
 				var place_pos = point + normal * 0.1
+				# Refuse to place a block inside the player's own body: a solid
+				# voxel spawned where the capsule stands gets push-resolved by
+				# physics and ejects the player through the floor ("провалился
+				# за полигон при постановке блока на себя", owner mid=698).
+				# Consume was already taken above, so refund it on refusal.
+				var place_cell := Vector3i(int(floor(place_pos.x)), int(floor(place_pos.y)), int(floor(place_pos.z)))
+				if _cell_overlaps_player(place_cell):
+					if inventory: inventory.add_item(selected_block_id, 1)
+					show_message("Can't place a block on yourself")
+					return
 				# Use the item's declared block_id, not the item id itself --
 				# most items are 1:1 (Dirt item 1 -> block 1) but a few reuse
 				# ids (Sand item 42 -> block 16, Snow item 43 -> block 15);
@@ -852,6 +862,20 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	SoundCaptions.caption("[Копание]")
 	Telemetry.log_event("block_broken", {"block_id": block_type})
 	voxel_world.set_voxel.rpc(block_pos, 0)
+
+## True if voxel `cell` overlaps the player's own capsule column -- used to
+## refuse placing a block inside yourself (owner mid=698). Same column check
+## + capsule-height band the old under-feet check used, but for PLACEMENT
+## (blocked) rather than mining (allowed -- digging down is intentional).
+func _cell_overlaps_player(cell: Vector3i) -> bool:
+	if cell.x != int(floor(global_position.x)) or cell.z != int(floor(global_position.z)):
+		return false
+	var half_height := 1.0 # CapsuleShape3D default (height 2.0) -- see Scenes/Player.tscn
+	if collision_shape and collision_shape.shape is CapsuleShape3D:
+		half_height = collision_shape.shape.height / 2.0
+	var feet_y := int(floor(global_position.y - half_height))
+	var head_y := int(floor(global_position.y + half_height - 0.05))
+	return cell.y >= feet_y and cell.y <= head_y
 
 func toggle_ai():
 	ai_enabled = not ai_enabled
