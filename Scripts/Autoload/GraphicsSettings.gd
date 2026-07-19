@@ -57,7 +57,26 @@ const AA_MODE_NAMES := ["Off", "FXAA", "MSAA 2x", "MSAA 4x"]
 const SDFGI_QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
 
 const VIEW_DISTANCE_MIN := 2
-const VIEW_DISTANCE_MAX := 8
+# Owner feedback (mid=654): "прорисовка и лод типа на 100 можно?" -- raised
+# from 8 so the slider can select up to 100. VoxelWorld.gd's chunk streaming
+# is queue+frame-budgeted (see CHUNKS_PER_FRAME there), so picking a huge
+# value won't freeze the frame -- it just paces the fill over more frames,
+# at any distance.
+#
+# HONEST CAVEAT: "won't freeze" is not the same as "practical". Chunk count
+# grows as (2*view_distance+1)^2 -- 289 chunks at the old max of 8, ~1,681 at
+# 20, ~40,401 at 100 -- and every one of those chunks is a full Node3D +
+# MeshInstance3D + StaticBody3D/CollisionShape3D, each generated with a
+# per-voxel Dictionary and a mesh loop over the whole 0-255 height column
+# regardless of how much terrain is actually there (see Chunk.gd). None of
+# that shrinks with distance -- there's no LOD/simplification for far chunks
+# yet (intentionally out of scope here; a real fix needs distance-based mesh
+# simplification/greedy meshing and is its own larger piece of work). So
+# values much past roughly 20-24 will take a very long time to fully
+# populate and hold a large amount of memory/collision data once loaded --
+# treat anything beyond that as experimental until a LOD layer exists, not
+# as a supported "no cost" option just because it no longer hitches.
+const VIEW_DISTANCE_MAX := 100
 
 # Bundled toggle groups the "Quality Preset" dropdown applies in one shot.
 # Keys match the individual settings fields below.
