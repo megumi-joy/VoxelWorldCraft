@@ -231,6 +231,22 @@ func _ready():
 	berries.nutrition_value = 12.0
 	items[70] = berries
 
+	# ID 71-72: Sheep drops (first passive fauna -- see Sheep.gd). Wool is a
+	# crafting resource (no recipe uses it yet, same as Sticks/Seeds before
+	# their consumers existed); Mutton is edible.
+	var wool = item_data_type.new()
+	wool.id = 71
+	wool.name = "Wool"
+	wool.type = item_data_type.ItemType.RESOURCE
+	items[71] = wool
+
+	var mutton = item_data_type.new()
+	mutton.id = 72
+	mutton.name = "Mutton"
+	mutton.type = item_data_type.ItemType.CONSUMABLE
+	mutton.nutrition_value = 25.0
+	items[72] = mutton
+
 	# ID 80-84: Mineral ores (wave 2). Each is its own block+item (id ==
 	# block_id, same pattern as Coal/Iron), mined via the pickaxe category
 	# (see BLOCK_TOOL_CATEGORY below), generated depth/biome-gated in
