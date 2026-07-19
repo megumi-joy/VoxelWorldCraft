@@ -16,7 +16,16 @@ func _ready():
 	tex_gen.set_script(tex_gen_type)
 	add_child(tex_gen)
 	
-	noise.seed = randi()
+	# Reuse the seed from a previous session if one was saved, so unedited
+	# chunks regenerate identical terrain instead of a fresh random world
+	# clashing with any previously-saved chunk snapshots (see SaveSystem's
+	# save_world_seed/load_world_seed).
+	var saved_seed = SaveSystem.load_world_seed()
+	if saved_seed != -1:
+		noise.seed = saved_seed
+	else:
+		noise.seed = randi()
+		SaveSystem.save_world_seed(noise.seed)
 	noise.frequency = 0.01
 
 func _process(_delta):
@@ -87,7 +96,7 @@ func set_voxel(global_pos: Vector3, type: int):
 		
 		if y >= 0 and y < 256:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
-			# SaveSystem.save_chunk(chunk) # Disable save for profiling to avoid disk I/O noise
+			SaveSystem.save_chunk(chunk)
 
 func spawn_block_entity(pos: Vector3i, scene_path: String):
 	var scene = load(scene_path)

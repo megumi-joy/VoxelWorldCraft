@@ -76,6 +76,16 @@ func generate_data():
 		is_generating = false
 		return
 
+	# Persisted edits: SaveSystem.save_chunk() writes the *entire*
+	# voxel_data dict for a chunk (a full snapshot, not a diff), so if a
+	# save file exists for this chunk coordinate, load it wholesale and
+	# skip procedural gen entirely -- regenerating on top would have
+	# nothing to overlay onto (voxel_data starts empty) and would just
+	# throw the loaded snapshot away.
+	if SaveSystem.load_chunk(self):
+		is_generating = false
+		return
+
 	# Terrain Pass
 	for x in range(16):
 		for z in range(16):
