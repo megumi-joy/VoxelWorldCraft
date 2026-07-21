@@ -256,13 +256,22 @@ func set_voxel(global_pos: Vector3, type: int):
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/CraftingTableBlock.tscn")
 	elif type == 10: # Bed
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/BedBlock.tscn")
-	
+	elif type == 56: # Torch (light source; see TorchBlock.gd)
+		spawn_block_entity(pos_i, "res://Scenes/Blocks/TorchBlock.tscn")
+
 	if chunks.has(chunk_pos) and chunks[chunk_pos] != null:
 		var chunk = chunks[chunk_pos]
 		var local_x = x - chunk_x * 16
 		var local_z = z - chunk_z * 16
-		
-		if y >= 0 and y < 256:
+
+		# Torch (56) is deliberately excluded here: unlike Furnace/Bed/
+		# CraftingTable it has no solid voxel cube (see TorchBlock.gd) --
+		# writing it into voxel_data would (a) double-render a textured
+		# cube around the torch mesh above and (b) wrongly cull neighbor
+		# faces as if the torch were solid. Placing/removing the torch is
+		# entirely block_entities-driven (see the cleanup at the top of
+		# this function, which already handles freeing/replacing it).
+		if y >= 0 and y < 256 and type != 56:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
 			SaveSystem.save_chunk(chunk)
 

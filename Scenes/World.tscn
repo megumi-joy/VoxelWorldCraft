@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://world123456"]
+[gd_scene load_steps=12 format=3 uid="uid://world123456"]
 
 [ext_resource type="Script" path="res://Scripts/World/World.gd" id="1_root"]
 [ext_resource type="Script" path="res://Scripts/World/VoxelWorld.gd" id="1_world"]
@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://Scripts/World/MobSpawner.gd" id="3_spawner"]
 [ext_resource type="PackedScene" uid="uid://mob123456" path="res://Scenes/Mob.tscn" id="4_mob_scene"]
 [ext_resource type="PackedScene" uid="uid://loadingscreen1" path="res://Scenes/LoadingScreen.tscn" id="5_loading"]
+[ext_resource type="Script" path="res://Scripts/World/AnimalSpawner.gd" id="6_animal_spawner"]
+[ext_resource type="PackedScene" uid="uid://sheep_entity" path="res://Scenes/Sheep.tscn" id="7_sheep_scene"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -51,3 +53,9 @@ voxel_world = NodePath("../VoxelWorld")
 [node name="MobMultiplayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("res://Scenes/Mob.tscn")
 spawn_path = NodePath("../MobSpawner")
+
+[node name="AnimalSpawner" type="Node" parent="." node_paths=PackedStringArray("time_cycle", "voxel_world")]
+script = ExtResource("6_animal_spawner")
+animal_scene = ExtResource("7_sheep_scene")
+time_cycle = NodePath("../TimeCycle")
+voxel_world = NodePath("../VoxelWorld")

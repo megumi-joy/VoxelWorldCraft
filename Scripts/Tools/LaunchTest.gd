@@ -91,3 +91,14 @@ func _ready():
 		dig_driver.name = "DigMiningDemoDriver"
 		var tree6 := Engine.get_main_loop() as SceneTree
 		tree6.root.add_child(dig_driver)
+
+	# Torch + Sheep verification/showcase: see
+	# Scripts/Testing/TorchSheepDemoDriver.gd for what it exercises (content
+	# self-check + a scripted timeline that places a Torch and spawns a
+	# Sheep in front of the player). Same "attach under the tree root"
+	# pattern as the drivers above, for the same reason.
+	if user_args.has("--torchsheep-demo"):
+		var torchsheep_driver = load("res://Scripts/Testing/TorchSheepDemoDriver.gd").new()
+		torchsheep_driver.name = "TorchSheepDemoDriver"
+		var tree7 := Engine.get_main_loop() as SceneTree
+		tree7.root.add_child(torchsheep_driver)
