@@ -628,6 +628,7 @@ func touch_jump() -> void:
 var _mining_block: Vector3i = Vector3i.ZERO
 var _mining_progress: float = 0.0
 var _mining_blocked: bool = false
+var _mining_target_hysteresis: float = 0.0
 
 func manual_interaction_check(delta: float):
 	var left = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or mock_left_click
@@ -801,18 +802,16 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	var block_type = get_block_at(voxel_world, block_pos)
 
 	if block_coord != _mining_block:
-		_mining_block = block_coord
-		_mining_progress = 0.0
-		_mining_blocked = false
-		Telemetry.log_event("target_changed", {"block_id": block_type})
+		_mining_target_hysteresis += delta
+		if _mining_target_hysteresis > 0.1:
+			_mining_block = block_coord
+			_mining_progress = 0.0
+			_mining_blocked = false
+			_mining_target_hysteresis = 0.0
+			Telemetry.log_event("target_changed", {"block_id": block_type})
+	else:
+		_mining_target_hysteresis = 0.0
 
-	# Digging straight down under yourself is intentional Minecraft-standard
-	# play (owner mid=695). It is SAFE now: the death loop was never the fall
-	# itself -- it was the interaction ray self-hitting the player
-	# (fixed via raycast.add_exception(self)). You drop one block onto the
-	# next, respawn lands on ground if you ever fall out, and the hold-to-mine
-	# delay + single-target reset (the target changes as you fall) naturally
-	# throttle it -- no instant chain into the void. So NO under-feet refusal.
 	_mining_blocked = false
 	_mining_progress += delta
 
@@ -821,48 +820,43 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 		return # still mid-hold -- not broken yet
 
 	_mining_progress = 0.0
+	_mining_target_hysteresis = 0.0
 
-	var harvest_inv = get_node_or_null("Inventory")
-	# Harvest: breaking a Berry Bush yields Berries (food), not the bush
-	# block itself -- keep this special-cased and mutually exclusive with the
-	# generic collectible pickup below (elif), or breaking a bush would grant
-	# both.
-	if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
-		if harvest_inv: harvest_inv.add_item(70, 1) # Berries
-		show_message("Harvested Berries")
-		ActionLog.log_event("Подобрано: Berries x1")
-	# Iron Ore (id 6) drops Raw Iron (id 62), not the ore block itself --
-	# mirrors real smelting: mine ore -> raw material -> Furnace -> ingot
-	# (see ItemDatabase.gd id 62/63 and Furnace.gd's get_smelting_result).
-	# Kept as its own branch rather than added to COLLECTIBLE_BLOCK_IDS
-	# below, which drops the block's own item id -- Iron Ore dropping
-	# itself would skip the raw-material step entirely.
-	elif block_type == 6: # Iron Ore
-		if harvest_inv: harvest_inv.add_item(62, 1) # Raw Iron
-		ActionLog.log_event("Подобрано: Raw Iron x1")
-	# Amethyst Ore (85, new) drops Amethyst Shard (66) -- a gem, not a
-	# metal, so no raw-material/smelting step, just its own distinct drop
-	# item (same shape as the Iron branch above, not added to
-	# COLLECTIBLE_BLOCK_IDS below).
-	elif block_type == 85: # Amethyst Ore
-		if harvest_inv: harvest_inv.add_item(66, 1) # Amethyst Shard
-		ActionLog.log_event("Подобрано: Amethyst Shard x1")
-	# Generic collectible pickup: the decorative flowers and the wave-2
-	# mineral ores are each their own block+item (id == block_id, see
-	# ItemDatabase.gd), so breaking one yields itself into the inventory --
-	# this is also what feeds Field Journal discovery
-	# (Inventory.item_picked_up -> PlayerStats.discover_item, see
-	# Player._ready()). Intentionally scoped to just these collectible
-	# species rather than every mineable block (Dirt/Stone/Wood/...) to keep
-	# this change's blast radius limited to wave 2.
-	elif block_type in COLLECTIBLE_BLOCK_IDS:
-		if harvest_inv: harvest_inv.add_item(block_type, 1)
-		ActionLog.log_event("Подобрано: " + _block_display_name(block_type) + " x1")
+	_drop_item_for_block(block_type)
 	ActionLog.log_event("Сломан блок: " + _block_display_name(block_type))
 	SoundCaptions.caption("[Копание]")
 	Telemetry.log_event("block_broken", {"block_id": block_type})
 	voxel_world.set_voxel.rpc(block_pos, 0)
 
+func _drop_item_for_block(block_type: int) -> void:
+	var harvest_inv = get_node_or_null("Inventory")
+	if not harvest_inv:
+		return
+	var drop_item_id = _get_block_drop_item_id(block_type)
+	if drop_item_id > 0:
+		harvest_inv.add_item(drop_item_id, 1)
+		var item_name = _block_display_name(drop_item_id)
+		ActionLog.log_event("Подобрано: " + item_name + " x1")
+		if block_type == 55:
+			show_message("Harvested Berries")
+
+func _get_block_drop_item_id(block_type: int) -> int:
+	match block_type:
+		55: return 70 # Berry Bush -> Berries
+		6: return 62 # Iron Ore -> Raw Iron
+		85: return 66 # Amethyst Ore -> Amethyst Shard
+		2, 14: return 1 # Grass / Farmland -> Dirt
+		42, 16: return 42 # Sand
+		43, 15: return 43 # Snow
+		_:
+			var item = ItemDatabase.get_item(block_type)
+			if item:
+				return block_type
+			return 0
+
+
+=======
+>>>>>>> origin/main
 ## True if voxel `cell` overlaps the player's own capsule column -- used to
 ## refuse placing a block inside yourself (owner mid=698). Same column check
 ## + capsule-height band the old under-feet check used, but for PLACEMENT
