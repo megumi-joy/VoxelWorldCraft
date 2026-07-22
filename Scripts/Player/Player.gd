@@ -825,6 +825,20 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	var block_coord := Vector3i(int(floor(block_pos.x)), int(floor(block_pos.y)), int(floor(block_pos.z)))
 	var block_type = get_block_at(voxel_world, block_pos)
 
+	# Unbreakable bedrock floor: y == 0 is the world's bottom layer (Chunk.gd's
+	# generate_data() writes it under "if y == 0"). It renders as plain Stone
+	# (id 3) and nothing stopped you mining it, so digging straight down broke
+	# through the floor and dropped the player through/under the world --
+	# "вылетает за полигоны и внизу сидит крутится" (owner mid=760). Refuse to
+	# break anything at y <= 0 so the bottom is a real hard floor. Digging down
+	# everywhere ABOVE it stays intentional (per #31); this only stops you
+	# falling out of the world through the very bottom.
+	if block_coord.y <= 0:
+		if not _mining_blocked:
+			_mining_blocked = true
+			show_message("Bedrock -- нельзя разрушить")
+		return
+
 	if block_coord != _mining_block:
 		_mining_target_hysteresis += delta
 		if _mining_target_hysteresis > 0.1:
