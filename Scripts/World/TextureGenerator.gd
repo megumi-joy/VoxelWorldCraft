@@ -134,7 +134,11 @@ func _ready():
 	var texture = ImageTexture.create_from_image(image)
 	var mat = StandardMaterial3D.new()
 	mat.albedo_texture = texture
-	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+	# NEAREST without mipmaps: mipmaps on a texture ATLAS blend neighbouring
+	# atlas cells at distance, showing as thin see-through seams/gaps between
+	# blocks ("просвет блоков", owner mid=777). Plain NEAREST samples one texel
+	# with no cross-cell interpolation -- standard for blocky/voxel games.
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	mat.alpha_scissor_threshold = 0.5
 	mat.vertex_color_use_as_albedo = true # Allow tinting too?

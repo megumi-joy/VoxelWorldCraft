@@ -373,14 +373,21 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 84: atlas_idx = 6; atlas_row = 5 # Malachite Ore
 	elif type == 85: atlas_idx = 7; atlas_row = 5 # Amethyst Ore
 
-	var u_start = atlas_idx * UV_SIZE
-	var v_start = atlas_row * UV_SIZE
-	
+	# Half-texel inset so a face's UVs never reach the exact atlas-cell edge --
+	# without it, sampling at the boundary can pick up the neighbouring cell and
+	# show a thin seam/gap between blocks ("просвет блоков"). Atlas is 512px
+	# (8 cells x 64px), so half a texel = 0.5/512 in UV space.
+	const UV_INSET := 0.5 / 512.0
+	var u_start = atlas_idx * UV_SIZE + UV_INSET
+	var v_start = atlas_row * UV_SIZE + UV_INSET
+	var u_end = atlas_idx * UV_SIZE + UV_SIZE - UV_INSET
+	var v_end = atlas_row * UV_SIZE + UV_SIZE - UV_INSET
+
 	var face_uvs = [
-		Vector2(u_start, v_start + UV_SIZE),
+		Vector2(u_start, v_end),
 		Vector2(u_start, v_start),
-		Vector2(u_start + UV_SIZE, v_start),
-		Vector2(u_start + UV_SIZE, v_start + UV_SIZE)
+		Vector2(u_end, v_start),
+		Vector2(u_end, v_end)
 	]
 	
 	st.set_uv(face_uvs[0]); st.add_vertex(pos_f + vertices[0])
