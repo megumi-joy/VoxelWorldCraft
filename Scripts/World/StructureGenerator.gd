@@ -8,12 +8,17 @@ const TREE_STRUCTURE = [
 	[Vector3i(0, 0, 0), 4], # Wood
 	[Vector3i(0, 1, 0), 4],
 	[Vector3i(0, 2, 0), 4],
-	# Leaves
-	[Vector3i(0, 3, 0), 5], # Leaves
-	[Vector3i(1, 2, 0), 5],
-	[Vector3i(-1, 2, 0), 5],
-	[Vector3i(0, 2, 1), 5],
-	[Vector3i(0, 2, -1), 5],
+	# Leaves -- id 57 (Oak Leaves). Was id 5, which is Coal (ItemDatabase.gd /
+	# Chunk.gd atlas), so oak trees rendered their canopy with the coal-ore
+	# texture -- the owner's "листва/бревно не как надо" (mid=738). 57 is a
+	# free id mapped to the real green oak-leaves atlas cell (2,2) in Chunk.gd.
+	# NOT 56 -- that id is Torch on current main. Coal (id 5) is left untouched
+	# so ore generation is unaffected.
+	[Vector3i(0, 3, 0), 57], # Oak Leaves
+	[Vector3i(1, 2, 0), 57],
+	[Vector3i(-1, 2, 0), 57],
+	[Vector3i(0, 2, 1), 57],
+	[Vector3i(0, 2, -1), 57],
 ]
 
 const BIRCH_TREE = [
