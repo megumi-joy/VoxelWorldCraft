@@ -97,6 +97,26 @@ func set_voxel(global_pos: Vector3, type: int):
 		if y >= 0 and y < 256:
 			chunk.set_block(Vector3i(local_x, y, local_z), type)
 			SaveSystem.save_chunk(chunk)
+			# Chunk.set_block() only remeshes the chunk that owns the voxel.
+			# When the edited voxel sits on a chunk border (local x/z == 0 or
+			# 15) the neighbouring chunk's mesh was baked assuming this voxel's
+			# OLD state, so its border faces go stale -- a face that should now
+			# be exposed stays culled, or one that should be culled lingers.
+			# That is the reported "блоки нету граней иногда" (esp. logs, which
+			# trees scatter right up to chunk edges): the seam never regenerated
+			# on edit. Remesh each affected neighbour so the seam stays correct.
+			if local_x == 0: _remesh_neighbor(Vector2i(chunk_x - 1, chunk_z))
+			elif local_x == 15: _remesh_neighbor(Vector2i(chunk_x + 1, chunk_z))
+			if local_z == 0: _remesh_neighbor(Vector2i(chunk_x, chunk_z - 1))
+			elif local_z == 15: _remesh_neighbor(Vector2i(chunk_x, chunk_z + 1))
+
+# Re-bake a neighbouring chunk's mesh after a border edit (see set_voxel above).
+# No-op if the neighbour isn't loaded / is still a placeholder / is mid-generation.
+func _remesh_neighbor(cpos: Vector2i) -> void:
+	if chunks.has(cpos):
+		var c = chunks[cpos]
+		if c != null and not c.is_generating:
+			c.generate_mesh()
 
 func spawn_block_entity(pos: Vector3i, scene_path: String):
 	var scene = load(scene_path)

@@ -751,6 +751,20 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 		_mining_blocked = false
 		Telemetry.log_event("target_changed", {"block_id": block_type})
 
+	# Unbreakable bedrock floor: y == 0 is the world's bottom layer (Chunk.gd's
+	# generate_data() writes it under "if y == 0"). It renders as plain Stone
+	# (id 3) and nothing used to stop you mining it, so digging straight down
+	# broke through the floor and dropped you into the void until the
+	# VOID_FALL_Y catch respawned you ("докопал до пола ... провалился за
+	# полигон"). Refuse to break anything at y <= 0 so the floor is a real hard
+	# bottom; _check_void_fall()'s teleport-up stays as the backstop for
+	# edge-walk-offs.
+	if block_coord.y <= 0:
+		if not _mining_blocked:
+			_mining_blocked = true
+			show_message("Bedrock -- нельзя разрушить")
+		return
+
 	if _is_block_under_feet(block_coord.x, block_coord.y, block_coord.z):
 		# Refuse outright -- this is exactly what let digging straight down
 		# turn into "копание вниз убивает": chain-break the block supporting
@@ -774,23 +788,32 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	var harvest_inv = get_node_or_null("Inventory")
 	# Harvest: breaking a Berry Bush yields Berries (food), not the bush
 	# block itself -- keep this special-cased and mutually exclusive with the
-	# generic collectible pickup below (elif), or breaking a bush would grant
-	# both.
+	# generic pickup below (else), or breaking a bush would grant both.
 	if block_type == 55: # Berry Bush (was id 52, reassigned -- see ItemDatabase.gd)
 		if harvest_inv: harvest_inv.add_item(70, 1) # Berries
 		show_message("Harvested Berries")
 		ActionLog.log_event("Подобрано: Berries x1")
-	# Generic collectible pickup: the decorative flowers and the wave-2
-	# mineral ores are each their own block+item (id == block_id, see
-	# ItemDatabase.gd), so breaking one yields itself into the inventory --
-	# this is also what feeds Field Journal discovery
-	# (Inventory.item_picked_up -> PlayerStats.discover_item, see
-	# Player._ready()). Intentionally scoped to just these collectible
-	# species rather than every mineable block (Dirt/Stone/Wood/...) to keep
-	# this change's blast radius limited to wave 2.
-	elif block_type in COLLECTIBLE_BLOCK_IDS:
-		if harvest_inv: harvest_inv.add_item(block_type, 1)
-		ActionLog.log_event("Подобрано: " + _block_display_name(block_type) + " x1")
+	else:
+		# Generic block harvest: EVERY mined block now yields itself into the
+		# inventory when it has a matching item (for blocks id == block_id,
+		# see ItemDatabase.gd) -- Dirt/Grass/Stone/Wood(logs)/ores/flowers
+		# alike. This was previously scoped to only COLLECTIBLE_BLOCK_IDS
+		# (flowers + wave-2 ores) + berries, which is exactly the reported
+		# "не собираются блоки кроме цветов": Dirt/Stone/Wood broke but
+		# dropped nothing into the bag. The ItemDatabase guard keeps blocks
+		# that have no item entry (leaves, water, raw sand/snow terrain ids,
+		# ...) simply disappearing instead of adding a null/broken item.
+		# Feeding add_item() also drives Field Journal discovery
+		# (Inventory.item_picked_up -> PlayerStats.discover_item).
+		# COLLECTIBLE_BLOCK_IDS (flowers + wave-2 ores 80-84) were always
+		# picked up unconditionally by the old code; keep them dropping even
+		# if they have no items[] entry, and add the ItemDatabase guard on top
+		# so the *newly* collectible generic blocks (Dirt/Stone/Wood/...) only
+		# drop when they map to a real item and item-less blocks
+		# (leaves/water/raw terrain ids) still just disappear.
+		if harvest_inv and (block_type in COLLECTIBLE_BLOCK_IDS or ItemDatabase.get_item(block_type) != null):
+			harvest_inv.add_item(block_type, 1)
+			ActionLog.log_event("Подобрано: " + _block_display_name(block_type) + " x1")
 	ActionLog.log_event("Сломан блок: " + _block_display_name(block_type))
 	SoundCaptions.caption("[Копание]")
 	Telemetry.log_event("block_broken", {"block_id": block_type})
