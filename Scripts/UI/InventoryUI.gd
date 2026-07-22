@@ -21,20 +21,18 @@ func _ready():
 	style.shadow_size = 10
 	panel.add_theme_stylebox_override("panel", style)
 	
-	# Find player inventory
-	var player = get_tree().get_first_node_in_group("player")
-	if player and player.has_node("Inventory"):
-		inventory = player.get_node("Inventory")
-		inventory.inventory_changed.connect(update_ui)
-		update_ui()
-	# Diagnostic: owner reports the full inventory panel never appears on 182
-	# ("инвентарь не видно только панель"), but the toggle code below reads
-	# correct statically -- so log whether the panel even wired up to a live
-	# inventory, to pin the failure to load-time vs. toggle-time on the next
-	# playtest telemetry rather than guessing.
+	# Find player inventory. ROOT CAUSE of "инвентарь не видно только панель"
+	# (owner mid=733): this UI's _ready() fires before the player's "Inventory"
+	# child exists -- Player.setup() creates that node at runtime, and on 182
+	# the HUD/panel loads first, so the one-shot lookup here found nothing,
+	# inventory stayed null, and update_ui() bailed out leaving an empty panel.
+	# Confirmed by telemetry (inventory_ui_ready found_inventory:false in the
+	# podman verify runs). Fix: retry across frames until the player and its
+	# Inventory node both exist, then wire up once.
 	if get_node_or_null("/root/Telemetry"):
 		Telemetry.log_event("inventory_ui_ready", {"found_inventory": inventory != null})
 	print("[InventoryUI] ready -- inventory=", inventory != null, " visible=", visible)
+	_wire_inventory_deferred()
 
 	# Ensure Input Map exists
 	if not InputMap.has_action("inventory"):
@@ -44,6 +42,26 @@ func _ready():
 		InputMap.action_add_event("inventory", ev)
 
 	set_process_input(true)
+
+## Retry wiring the UI to the player's live Inventory across frames, because
+## the player (and its "Inventory" child) may not exist yet when _ready()
+## fires -- see the note in _ready(). Gives up quietly after ~2s so a stripped
+## test scene without a player never spins forever. Idempotent: returns as soon
+## as it has connected once.
+func _wire_inventory_deferred() -> void:
+	if inventory:
+		return
+	for _attempt in range(120): # ~2s at 60fps
+		var player = get_tree().get_first_node_in_group("player")
+		if player and player.has_node("Inventory"):
+			inventory = player.get_node("Inventory")
+			inventory.inventory_changed.connect(update_ui)
+			update_ui()
+			if get_node_or_null("/root/Telemetry"):
+				Telemetry.log_event("inventory_ui_wired", {"attempt": _attempt})
+			print("[InventoryUI] inventory wired after ", _attempt, " frame(s)")
+			return
+		await get_tree().process_frame
 
 func _input(event):
 	if event.is_action_pressed("inventory"):
