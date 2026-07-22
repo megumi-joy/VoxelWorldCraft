@@ -190,12 +190,16 @@ func _process(delta):
 			Telemetry.log_event("showcase_bed_placed", {"placed": placed, "cell": str(bed_cell)})
 		_select(BED_ID)
 		print("[Showcase] t=", String.num(_t, 2), " placed bed at ", bed_cell, " entity=", placed, " (night forced)")
-	# Point the camera at the bed for the video, then drive its real interact().
+	# Frame the sleep for the video, then drive the bed's real interact().
+	# Aim at the HORIZON (-12 deg), NOT point-blank at the bed: aiming straight
+	# at the adjacent bed block filled the frame with a single block face, which
+	# reads as "провалился под текстуры / clipped into geometry" (owner mid=770)
+	# even though the player never fell (on_floor, health 100, max_drop 0). The
+	# horizon shot shows the night->dawn sky transition -- the actual payoff of
+	# sleeping -- with the bed/build in the lower frame.
 	if _t >= 4.3 and not _done.has("sleep_trigger"):
 		_done["sleep_trigger"] = true
-		var bed_cell2 = _find_bed_cell()
-		if bed_cell2 != null:
-			_aim_at_cell(bed_cell2)
+		_aim(-12.0)
 		var bed = _find_bed_entity()
 		if bed and bed.has_method("interact"):
 			bed.interact(player) # coroutine: "Sleeping..." -> 1s -> skip_to_morning()
