@@ -102,3 +102,15 @@ func _ready():
 		torchsheep_driver.name = "TorchSheepDemoDriver"
 		var tree7 := Engine.get_main_loop() as SceneTree
 		tree7.root.add_child(torchsheep_driver)
+
+	# Gameplay showcase + verification: surface-walk (green oak leaves on
+	# camera) -> BUILD (place a wood stack) -> SLEEP (place bed, force night,
+	# interact) -> EAT (apple). Never mines, so it can't reproduce the dig-
+	# through-floor fall. Emits per-step Telemetry + a showcase_summary for
+	# objective log-only verification. See Scripts/Testing/ShowcaseDemoDriver.gd.
+	# Same "attach under the tree root" pattern as the drivers above.
+	if user_args.has("--showcase-demo"):
+		var showcase_driver = load("res://Scripts/Testing/ShowcaseDemoDriver.gd").new()
+		showcase_driver.name = "ShowcaseDemoDriver"
+		var tree8 := Engine.get_main_loop() as SceneTree
+		tree8.root.add_child(showcase_driver)

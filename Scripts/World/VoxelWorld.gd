@@ -87,12 +87,20 @@ func _ready():
 	# chunks regenerate identical terrain instead of a fresh random world
 	# clashing with any previously-saved chunk snapshots (see SaveSystem's
 	# save_world_seed/load_world_seed).
-	var saved_seed = SaveSystem.load_world_seed()
-	if saved_seed != -1:
-		noise.seed = saved_seed
+	# Reproducibility for the gameplay showcase/verification: --showcase-demo
+	# pins a fixed seed so the terrain the driver is tuned against (and verified
+	# on headless) is byte-identical to what gets rendered on 182 -- FastNoiseLite
+	# is deterministic across platforms. Inert flag, same convention as the demo
+	# drivers; never affects normal play.
+	if OS.get_cmdline_user_args().has("--showcase-demo"):
+		noise.seed = 424242
 	else:
-		noise.seed = randi()
-		SaveSystem.save_world_seed(noise.seed)
+		var saved_seed = SaveSystem.load_world_seed()
+		if saved_seed != -1:
+			noise.seed = saved_seed
+		else:
+			noise.seed = randi()
+			SaveSystem.save_world_seed(noise.seed)
 	noise.frequency = 0.01
 
 func _process(_delta):
