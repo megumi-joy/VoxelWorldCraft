@@ -30,6 +30,7 @@ SoundCaptions="*res://Scripts/Autoload/SoundCaptions.gd"
 Telemetry="*res://Scripts/Autoload/Telemetry.gd"
 WeatherSystem="*res://Scripts/Autoload/WeatherSystem.gd"
 FoliageRenderer="*res://Scripts/Autoload/FoliageRenderer.gd"
+DebugOverlay="*res://Scripts/Autoload/DebugOverlay.gd"
 
 [display]
 
