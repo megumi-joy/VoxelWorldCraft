@@ -27,19 +27,33 @@ func _ready():
 		inventory = player.get_node("Inventory")
 		inventory.inventory_changed.connect(update_ui)
 		update_ui()
-	
+	# Diagnostic: owner reports the full inventory panel never appears on 182
+	# ("инвентарь не видно только панель"), but the toggle code below reads
+	# correct statically -- so log whether the panel even wired up to a live
+	# inventory, to pin the failure to load-time vs. toggle-time on the next
+	# playtest telemetry rather than guessing.
+	if get_node_or_null("/root/Telemetry"):
+		Telemetry.log_event("inventory_ui_ready", {"found_inventory": inventory != null})
+	print("[InventoryUI] ready -- inventory=", inventory != null, " visible=", visible)
+
 	# Ensure Input Map exists
 	if not InputMap.has_action("inventory"):
 		InputMap.add_action("inventory")
 		var ev = InputEventKey.new()
 		ev.physical_keycode = KEY_E
 		InputMap.action_add_event("inventory", ev)
-	
+
 	set_process_input(true)
 
 func _input(event):
 	if event.is_action_pressed("inventory"):
 		visible = not visible
+		# Diagnostic (see _ready): confirms the E press actually reached this
+		# handler and flipped visibility -- so a 182 log shows whether the bug
+		# is "toggle never fires" vs. "toggles but renders nothing".
+		if get_node_or_null("/root/Telemetry"):
+			Telemetry.log_event("inventory_ui_toggled", {"visible": visible})
+		print("[InventoryUI] toggled -- visible=", visible)
 		if visible:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 			update_ui()
