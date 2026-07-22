@@ -346,6 +346,7 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 42: atlas_idx = 1; atlas_row = 2 # Sand
 	elif type == 43: atlas_idx = 0; atlas_row = 2 # Snow
 	elif type == 50: atlas_idx = 2; atlas_row = 2 # Leaves (Oak)
+	elif type == 57: atlas_idx = 2; atlas_row = 2 # Oak Leaves (dedicated id; was 5=Coal -- see StructureGenerator.gd; 56 is Torch)
 	elif type == 52: atlas_idx = 3; atlas_row = 2 # Ice (Tundra)
 	
 	# Row 3: Fluids, Wood Types
