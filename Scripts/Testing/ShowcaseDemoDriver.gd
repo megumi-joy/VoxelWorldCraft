@@ -32,6 +32,8 @@ var voxel_world: Node = null
 var time_cycle: Node = null
 
 var _armed: bool = false        # timeline started (player settled on floor)
+var _world_loaded: bool = false # VoxelWorld.initial_load_complete fired
+var _load_wait: float = 0.0     # deadlock guard if the signal never comes
 var _settle_timer: float = 0.0
 var _t: float = 0.0             # timeline clock, starts at settle
 var _done: Dictionary = {}
@@ -65,8 +67,26 @@ func _find_player():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	voxel_world = get_node_or_null("/root/World/VoxelWorld")
 	time_cycle = get_node_or_null("/root/World/TimeCycle")
+	# Wait for ALL chunks to finish loading (LoadingScreen hides on this same
+	# signal) before acting, so build/sleep/eat happen on-camera and not behind
+	# the loading overlay -- owner ask is to SEE him build/sleep/eat (mid=761).
+	if voxel_world and voxel_world.has_signal("initial_load_complete"):
+		voxel_world.initial_load_complete.connect(_on_world_loaded)
+		# Race guard: if all chunks already loaded before we connected (headless
+		# loads them synchronously at startup, so the signal fires early),
+		# read the state directly instead of waiting on a signal that's gone.
+		if ("initial_load_done" in voxel_world) and voxel_world.initial_load_done:
+			_world_loaded = true
+	else:
+		_world_loaded = true # no signal to wait on -> don't block
 	print("[Showcase] player found at ", player.global_position,
 		" voxel_world=", voxel_world != null, " time_cycle=", time_cycle != null)
+
+func _on_world_loaded() -> void:
+	_world_loaded = true
+	if get_node_or_null("/root/Telemetry"):
+		Telemetry.log_event("showcase_world_loaded", {})
+	print("[Showcase] world load complete -- loading screen cleared")
 
 func _aim(pitch_deg: float, yaw: float = 0.0) -> void:
 	if player.head: player.head.rotation.y = yaw
@@ -95,6 +115,12 @@ func _process(delta):
 	# the spawn height before gravity kicks in, so require low velocity.y too
 	# or spawn_y is captured 3 blocks high and pollutes max_drop.
 	if not _armed:
+		# Don't arm until the world has finished loading (loading screen gone),
+		# so every action is on-camera. Deadlock guard: if the signal never
+		# arrives, arm anyway after 45s.
+		_load_wait += delta
+		if not _world_loaded and _load_wait < 45.0:
+			return
 		# Arm once the player is resting on the ground (on_floor + near-zero
 		# vertical velocity, held ~0.6s so a one-frame spawn-height flicker
 		# doesn't count). NOTE: do NOT gate on "must have been airborne first"
