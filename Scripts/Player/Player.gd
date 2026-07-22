@@ -368,7 +368,16 @@ func _is_menu_open() -> bool:
 func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-			_release_movement_input()
+			# Skip under a scripted driver (AutoTester --run-tests / any *-demo
+			# driver): its "input" is Input.action_press() calls, and a
+			# recording/CI window legitimately runs WITHOUT OS input focus, so
+			# firing the anti-key-stick release here cancels the driver's held
+			# movement every frame and freezes the scripted player -- exactly
+			# the "velocity spikes one physics tick then falls to 0 forever"
+			# seen while recording the demo video. Manual play (no such flag)
+			# has a real focused window and keeps the release.
+			if not _scripted_input_active():
+				_release_movement_input()
 		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_WM_WINDOW_FOCUS_IN:
 			# Defensive re-assert: some platforms silently drop a
 			# MOUSE_MODE_CAPTURED request made while the window doesn't yet
@@ -378,6 +387,21 @@ func _notification(what: int) -> void:
 			# the bot drives).
 			if not _manually_released_mouse and not _is_menu_open() and not ai_enabled:
 				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+## True when the game is driven by a scripted/AI input source rather than a
+## live human at a focused window: AutoTester (--run-tests) or any *DemoDriver
+## launched via a --*-demo user arg (--dig-demo/--movement-demo/--wave2-demo/
+## ...). Those drivers feed movement through Input.action_press(), so the
+## FOCUS_OUT anti-key-stick release in _notification() must NOT fire for them
+## (a recording/CI window has no OS input focus, and cancelling the held input
+## every frame freezes the scripted player). Manual play matches no flag here.
+func _scripted_input_active() -> bool:
+	if OS.get_cmdline_args().has("--run-tests"):
+		return true
+	for a in OS.get_cmdline_user_args():
+		if a.ends_with("-demo"):
+			return true
+	return false
 
 ## Root cause of "keyboard sticks": if a key's release event arrives while
 ## the OS window doesn't have focus (alt-tab, clicking another app/the
