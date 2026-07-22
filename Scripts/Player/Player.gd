@@ -854,9 +854,6 @@ func _get_block_drop_item_id(block_type: int) -> int:
 				return block_type
 			return 0
 
-
-=======
->>>>>>> origin/main
 ## True if voxel `cell` overlaps the player's own capsule column -- used to
 ## refuse placing a block inside yourself (owner mid=698). Same column check
 ## + capsule-height band the old under-feet check used, but for PLACEMENT
