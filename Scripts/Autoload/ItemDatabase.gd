@@ -8,7 +8,7 @@ func _ready():
 	# ID 1: Dirt Block
 	var dirt = item_data_type.new()
 	dirt.id = 1
-	dirt.name = "Dirt"
+	dirt.name = "Земля"
 	dirt.type = item_data_type.ItemType.BLOCK
 	dirt.block_id = 1
 	items[1] = dirt
@@ -16,7 +16,7 @@ func _ready():
 	# ID 2: Grass Block
 	var grass = item_data_type.new()
 	grass.id = 2
-	grass.name = "Grass"
+	grass.name = "Трава"
 	grass.type = item_data_type.ItemType.BLOCK
 	grass.block_id = 2
 	items[2] = grass
@@ -24,7 +24,7 @@ func _ready():
 	# ID 3: Stone Block
 	var stone = item_data_type.new()
 	stone.id = 3
-	stone.name = "Stone"
+	stone.name = "Камень"
 	stone.type = item_data_type.ItemType.BLOCK
 	stone.block_id = 3
 	items[3] = stone
@@ -32,7 +32,7 @@ func _ready():
 	# ID 4: Wood Block
 	var wood = item_data_type.new()
 	wood.id = 4
-	wood.name = "Wood"
+	wood.name = "Дерево"
 	wood.type = item_data_type.ItemType.BLOCK
 	wood.block_id = 4
 	items[4] = wood
@@ -40,7 +40,7 @@ func _ready():
 	# ID 5: Coal Ore
 	var coal = item_data_type.new()
 	coal.id = 5
-	coal.name = "Coal Ore"
+	coal.name = "Угольная руда"
 	coal.type = item_data_type.ItemType.BLOCK
 	coal.block_id = 5
 	items[5] = coal
@@ -48,7 +48,7 @@ func _ready():
 	# ID 6: Iron Ore
 	var iron = item_data_type.new()
 	iron.id = 6
-	iron.name = "Iron Ore"
+	iron.name = "Железная руда"
 	iron.type = item_data_type.ItemType.BLOCK
 	iron.block_id = 6
 	items[6] = iron
@@ -56,7 +56,7 @@ func _ready():
 	# ID 10: Bed
 	var bed = item_data_type.new()
 	bed.id = 10
-	bed.name = "Bed"
+	bed.name = "Кровать"
 	bed.type = item_data_type.ItemType.BLOCK
 	bed.block_id = 10
 	items[10] = bed
@@ -64,7 +64,7 @@ func _ready():
 	# ID 8: Furnace
 	var furnace = item_data_type.new()
 	furnace.id = 8
-	furnace.name = "Furnace"
+	furnace.name = "Печь"
 	furnace.type = item_data_type.ItemType.BLOCK
 	furnace.block_id = 8
 	items[8] = furnace
@@ -72,7 +72,7 @@ func _ready():
 	# ID 9: Crafting Table
 	var ctable = item_data_type.new()
 	ctable.id = 9
-	ctable.name = "Crafting Table"
+	ctable.name = "Верстак"
 	ctable.type = item_data_type.ItemType.BLOCK
 	ctable.block_id = 9
 	items[9] = ctable
@@ -80,23 +80,25 @@ func _ready():
 	# ID 11: Apple
 	var apple = item_data_type.new()
 	apple.id = 11
-	apple.name = "Apple"
+	apple.name = "Яблоко"
 	apple.type = item_data_type.ItemType.CONSUMABLE
 	apple.nutrition_value = 20.0
 	items[11] = apple
 	
-	# ID 12: Sword
+	# ID 12: Sword (Iron tier -- see IDs 86/90 below for Wood/Stone tiers)
 	var sword = item_data_type.new()
 	sword.id = 12
-	sword.name = "Iron Sword"
+	sword.name = "Железный меч"
 	sword.type = item_data_type.ItemType.TOOL
 	sword.damage_value = 10.0
+	sword.tier = 3
+	sword.stackable = false
 	items[12] = sword
 	
 	# ID 13: Planks
 	var planks = item_data_type.new()
 	planks.id = 13
-	planks.name = "Planks"
+	planks.name = "Доски"
 	planks.type = item_data_type.ItemType.BLOCK
 	planks.block_id = 13
 	items[13] = planks
@@ -104,21 +106,21 @@ func _ready():
 	# ID 20: Seeds
 	var seeds = item_data_type.new()
 	seeds.id = 20
-	seeds.name = "Seeds"
+	seeds.name = "Семена"
 	seeds.type = item_data_type.ItemType.RESOURCE
 	items[20] = seeds
 	
 	# ID 21: Wheat
 	var wheat = item_data_type.new()
 	wheat.id = 21
-	wheat.name = "Wheat"
+	wheat.name = "Пшеница"
 	wheat.type = item_data_type.ItemType.RESOURCE
 	items[21] = wheat
 	
 	# ID 22: Bread
 	var bread = item_data_type.new()
 	bread.id = 22
-	bread.name = "Bread"
+	bread.name = "Хлеб"
 	bread.type = item_data_type.ItemType.CONSUMABLE
 	bread.nutrition_value = 30.0
 	items[22] = bread
@@ -126,7 +128,7 @@ func _ready():
 	# ID 23: Sticks (Planks -> Sticks, used as a crafting ingredient)
 	var sticks = item_data_type.new()
 	sticks.id = 23
-	sticks.name = "Sticks"
+	sticks.name = "Палки"
 	sticks.type = item_data_type.ItemType.RESOURCE
 	items[23] = sticks
 
@@ -139,13 +141,13 @@ func _ready():
 	# hardcoded "input 6 -> 1, for test" placeholder).
 	var raw_iron = item_data_type.new()
 	raw_iron.id = 62
-	raw_iron.name = "Raw Iron"
+	raw_iron.name = "Сырое железо"
 	raw_iron.type = item_data_type.ItemType.RESOURCE
 	items[62] = raw_iron
 
 	var iron_ingot = item_data_type.new()
 	iron_ingot.id = 63
-	iron_ingot.name = "Iron Ingot"
+	iron_ingot.name = "Железный слиток"
 	iron_ingot.type = item_data_type.ItemType.RESOURCE
 	items[63] = iron_ingot
 
@@ -165,13 +167,13 @@ func _ready():
 	# CodexDatabase.item_to_species).
 	var gold_ingot = item_data_type.new()
 	gold_ingot.id = 64
-	gold_ingot.name = "Gold Ingot"
+	gold_ingot.name = "Золотой слиток"
 	gold_ingot.type = item_data_type.ItemType.RESOURCE
 	items[64] = gold_ingot
 
 	var copper_ingot = item_data_type.new()
 	copper_ingot.id = 65
-	copper_ingot.name = "Copper Ingot"
+	copper_ingot.name = "Медный слиток"
 	copper_ingot.type = item_data_type.ItemType.RESOURCE
 	items[65] = copper_ingot
 
@@ -180,7 +182,7 @@ func _ready():
 	# resource.
 	var amethyst_shard = item_data_type.new()
 	amethyst_shard.id = 66
-	amethyst_shard.name = "Amethyst Shard"
+	amethyst_shard.name = "Осколок аметиста"
 	amethyst_shard.type = item_data_type.ItemType.RESOURCE
 	items[66] = amethyst_shard
 
@@ -195,21 +197,21 @@ func _ready():
 	# inventory item to place a new one.
 	var bucket_empty = item_data_type.new()
 	bucket_empty.id = 67
-	bucket_empty.name = "Bucket"
+	bucket_empty.name = "Ведро"
 	bucket_empty.type = item_data_type.ItemType.TOOL
 	bucket_empty.stackable = false
 	items[67] = bucket_empty
 
 	var bucket_water = item_data_type.new()
 	bucket_water.id = 68
-	bucket_water.name = "Water Bucket"
+	bucket_water.name = "Ведро воды"
 	bucket_water.type = item_data_type.ItemType.TOOL
 	bucket_water.stackable = false
 	items[68] = bucket_water
 
 	var bucket_lava = item_data_type.new()
 	bucket_lava.id = 69
-	bucket_lava.name = "Lava Bucket"
+	bucket_lava.name = "Ведро лавы"
 	bucket_lava.type = item_data_type.ItemType.TOOL
 	bucket_lava.stackable = false
 	items[69] = bucket_lava
@@ -220,10 +222,10 @@ func _ready():
 	# so ItemDatabase.get_item(30..33) always returned null and any tool
 	# logic keyed off it (Player.gd break-speed, Hoe check) silently no-opped.
 	var tools_data_local = {
-		30: ["Wooden Pickaxe", "pickaxe"],
-		31: ["Wooden Shovel", "shovel"],
-		32: ["Wooden Axe", "axe"],
-		33: ["Wooden Hoe", "hoe"]
+		30: ["Деревянная кирка", "pickaxe"],
+		31: ["Деревянная лопата", "shovel"],
+		32: ["Деревянный топор", "axe"],
+		33: ["Деревянная мотыга", "hoe"]
 	}
 	for tid in tools_data_local:
 		var tool_item = item_data_type.new()
@@ -231,25 +233,110 @@ func _ready():
 		tool_item.name = tools_data_local[tid][0]
 		tool_item.type = item_data_type.ItemType.TOOL
 		tool_item.tool_type = tools_data_local[tid][1]
+		tool_item.tier = 1 # Wood tier -- see IDs 86-93 below for Stone/Iron tiers
 		tool_item.stackable = false
 		items[tid] = tool_item
+
+	# ID 86-93: Stone + Iron tool tiers (Wood tier is 30-33 above, Iron Sword
+	# is the pre-existing ID 12). Same tool_type categories as the Wood tier
+	# so Player.gd's get_break_speed() matches on tool_type, then picks the
+	# actual speed from BREAK_SPEED_BY_TIER keyed on this `tier` field -- see
+	# Player.gd for the tier -> speed table. Swords (tool_type "") never match
+	# a mining category, so they only ever affect melee damage_value below.
+	var tiered_tools_local = {
+		86: ["Деревянный меч", "", 1, 4.0],
+		87: ["Каменная кирка", "pickaxe", 2, 0.0],
+		88: ["Каменная лопата", "shovel", 2, 0.0],
+		89: ["Каменный топор", "axe", 2, 0.0],
+		90: ["Каменный меч", "", 2, 7.0],
+		91: ["Железная кирка", "pickaxe", 3, 0.0],
+		92: ["Железная лопата", "shovel", 3, 0.0],
+		93: ["Железный топор", "axe", 3, 0.0],
+	}
+	for tid in tiered_tools_local:
+		var t = item_data_type.new()
+		t.id = tid
+		t.name = tiered_tools_local[tid][0]
+		t.type = item_data_type.ItemType.TOOL
+		t.tool_type = tiered_tools_local[tid][1]
+		t.tier = tiered_tools_local[tid][2]
+		t.damage_value = tiered_tools_local[tid][3]
+		t.stackable = false
+		items[tid] = t
+
+	# ID 94-95: Raw/Cooked Meat. Raw Meat is a new Sheep.gd drop (alongside
+	# the existing Wool/Mutton -- see Sheep.gd's die()); edible raw for a
+	# little nutrition, but smelting it in the Furnace (see Furnace.gd's
+	# get_smelting_result) yields Cooked Meat, worth noticeably more --
+	# same "cook it for a better payoff" shape as Wheat -> Bread.
+	var raw_meat = item_data_type.new()
+	raw_meat.id = 94
+	raw_meat.name = "Сырое мясо"
+	raw_meat.type = item_data_type.ItemType.CONSUMABLE
+	raw_meat.nutrition_value = 6.0
+	items[94] = raw_meat
+
+	var cooked_meat = item_data_type.new()
+	cooked_meat.id = 95
+	cooked_meat.name = "Жареное мясо"
+	cooked_meat.type = item_data_type.ItemType.CONSUMABLE
+	cooked_meat.nutrition_value = 32.0
+	items[95] = cooked_meat
+
+	# ID 96-98: Clay (new shallow ORE_TABLE entry, see Chunk.gd) and its two
+	# furnace products, Glass (from Sand, ID 42) and Brick (from Clay) --
+	# both placeable building blocks. See Furnace.gd's get_smelting_result,
+	# Chunk.gd's atlas mapping (row 1, cols 4-6), and TextureGenerator.gd for
+	# the matching atlas cells.
+	var clay = item_data_type.new()
+	clay.id = 96
+	clay.name = "Глина"
+	clay.type = item_data_type.ItemType.BLOCK
+	clay.block_id = 96
+	items[96] = clay
+
+	var glass = item_data_type.new()
+	glass.id = 97
+	glass.name = "Стекло"
+	glass.type = item_data_type.ItemType.BLOCK
+	glass.block_id = 97
+	items[97] = glass
+
+	var brick = item_data_type.new()
+	brick.id = 98
+	brick.name = "Кирпич"
+	brick.type = item_data_type.ItemType.BLOCK
+	brick.block_id = 98
+	items[98] = brick
+
+	# ID 99: Leather. New Cow.gd drop (creatures/mobs batch) -- a raw
+	# resource (armor crafting material), not consumable, alongside the
+	# existing Leather Tunic armor piece at ID 60. Last free id before the
+	# 100+ periodic-table block reserves it (see the elements loop below),
+	# so nothing new should claim an id here without shifting those.
+	var leather = item_data_type.new()
+	leather.id = 99
+	leather.name = "Кожа"
+	leather.type = item_data_type.ItemType.RESOURCE
+	items[99] = leather
+
 	# Nature & Fluids
 	var nature_items = {
-		40: ["Water", item_data_type.ItemType.BLOCK, 40],
-		41: ["Lava", item_data_type.ItemType.BLOCK, 41],
-		42: ["Sand", item_data_type.ItemType.BLOCK, 16], # Reuse logic
-		43: ["Snow", item_data_type.ItemType.BLOCK, 15],
-		44: ["Flower (Red)", item_data_type.ItemType.BLOCK, 44],
-		45: ["Flower (Yellow)", item_data_type.ItemType.BLOCK, 45],
-		46: ["Tall Grass", item_data_type.ItemType.BLOCK, 46],
-		47: ["Cactus", item_data_type.ItemType.BLOCK, 47],
-		48: ["Birch Wood", item_data_type.ItemType.BLOCK, 48],
-		49: ["Pine Wood", item_data_type.ItemType.BLOCK, 49],
-		50: ["Birch Leaves", item_data_type.ItemType.BLOCK, 50],
-		51: ["Pine Leaves", item_data_type.ItemType.BLOCK, 51],
-		52: ["Ice", item_data_type.ItemType.BLOCK, 52],
-		60: ["Leather Tunic", item_data_type.ItemType.RESOURCE, 0], # Armor Type?
-		61: ["Iron Chestplate", item_data_type.ItemType.RESOURCE, 0]
+		40: ["Вода", item_data_type.ItemType.BLOCK, 40],
+		41: ["Лава", item_data_type.ItemType.BLOCK, 41],
+		42: ["Песок", item_data_type.ItemType.BLOCK, 16], # Reuse logic
+		43: ["Снег", item_data_type.ItemType.BLOCK, 15],
+		44: ["Цветок (красный)", item_data_type.ItemType.BLOCK, 44],
+		45: ["Цветок (жёлтый)", item_data_type.ItemType.BLOCK, 45],
+		46: ["Высокая трава", item_data_type.ItemType.BLOCK, 46],
+		47: ["Кактус", item_data_type.ItemType.BLOCK, 47],
+		48: ["Берёза", item_data_type.ItemType.BLOCK, 48],
+		49: ["Сосна", item_data_type.ItemType.BLOCK, 49],
+		50: ["Берёзовая листва", item_data_type.ItemType.BLOCK, 50],
+		51: ["Сосновая листва", item_data_type.ItemType.BLOCK, 51],
+		52: ["Лёд", item_data_type.ItemType.BLOCK, 52],
+		60: ["Кожаная туника", item_data_type.ItemType.RESOURCE, 0], # Armor Type?
+		61: ["Железный нагрудник", item_data_type.ItemType.RESOURCE, 0]
 	}
 	for id in nature_items:
 		var n = item_data_type.new()
@@ -274,7 +361,7 @@ func _ready():
 	# scatter.
 	var berry_bush = item_data_type.new()
 	berry_bush.id = 55
-	berry_bush.name = "Berry Bush"
+	berry_bush.name = "Ягодный куст"
 	berry_bush.type = item_data_type.ItemType.BLOCK
 	berry_bush.block_id = 55
 	items[55] = berry_bush
@@ -282,7 +369,7 @@ func _ready():
 	# ID 53: Blue Flower (decorative)
 	var blue_flower = item_data_type.new()
 	blue_flower.id = 53
-	blue_flower.name = "Flower (Blue)"
+	blue_flower.name = "Цветок (синий)"
 	blue_flower.type = item_data_type.ItemType.BLOCK
 	blue_flower.block_id = 53
 	items[53] = blue_flower
@@ -290,7 +377,7 @@ func _ready():
 	# ID 54: Pink Flower (decorative)
 	var pink_flower = item_data_type.new()
 	pink_flower.id = 54
-	pink_flower.name = "Flower (Pink)"
+	pink_flower.name = "Цветок (розовый)"
 	pink_flower.type = item_data_type.ItemType.BLOCK
 	pink_flower.block_id = 54
 	items[54] = pink_flower
@@ -302,7 +389,7 @@ func _ready():
 	# entity's own pole+flame mesh and OmniLight3D.)
 	var torch = item_data_type.new()
 	torch.id = 56
-	torch.name = "Torch"
+	torch.name = "Факел"
 	torch.type = item_data_type.ItemType.BLOCK
 	torch.block_id = 56
 	items[56] = torch
@@ -310,7 +397,7 @@ func _ready():
 	# ID 70: Berries (edible; harvested by breaking a Berry Bush)
 	var berries = item_data_type.new()
 	berries.id = 70
-	berries.name = "Berries"
+	berries.name = "Ягоды"
 	berries.type = item_data_type.ItemType.CONSUMABLE
 	berries.nutrition_value = 12.0
 	items[70] = berries
@@ -320,16 +407,28 @@ func _ready():
 	# their consumers existed); Mutton is edible.
 	var wool = item_data_type.new()
 	wool.id = 71
-	wool.name = "Wool"
+	wool.name = "Шерсть"
 	wool.type = item_data_type.ItemType.RESOURCE
 	items[71] = wool
 
 	var mutton = item_data_type.new()
 	mutton.id = 72
-	mutton.name = "Mutton"
+	mutton.name = "Баранина"
 	mutton.type = item_data_type.ItemType.CONSUMABLE
 	mutton.nutrition_value = 25.0
 	items[72] = mutton
+
+	# ID 73: Storage Chest (block-entity, 27 slots -- see
+	# Scripts/Blocks/ChestBlock.gd). Ported from voxel-train3 branch commit
+	# c618890, which used id 71 for this -- that id is Wool on THIS branch
+	# (see above), so this port uses the next free id after Wool(71)/
+	# Mutton(72) and before the wave-2 minerals (80-85).
+	var chest = item_data_type.new()
+	chest.id = 73
+	chest.name = "Сундук"
+	chest.type = item_data_type.ItemType.BLOCK
+	chest.block_id = 73
+	items[73] = chest
 
 	# ID 80-84: Mineral ores (wave 2). Each is its own block+item (id ==
 	# block_id, same pattern as Coal/Iron), mined via the pickaxe category
@@ -337,11 +436,11 @@ func _ready():
 	# Chunk.gd's ORE_TABLE, and registered as Field Journal "Minerals" codex
 	# entries in CodexDatabase.gd keyed off these same item ids.
 	var minerals = {
-		80: "Copper Ore",
-		81: "Gold Ore",
-		82: "Quartz",
-		83: "Hematite",
-		84: "Malachite Ore",
+		80: "Медная руда",
+		81: "Золотая руда",
+		82: "Кварц",
+		83: "Гематит",
+		84: "Малахитовая руда",
 	}
 	for mid in minerals:
 		var m = item_data_type.new()
@@ -362,21 +461,21 @@ func _ready():
 	# completeness (matching every other block having an item id).
 	var amethyst_ore = item_data_type.new()
 	amethyst_ore.id = 85
-	amethyst_ore.name = "Amethyst Ore"
+	amethyst_ore.name = "Аметистовая руда"
 	amethyst_ore.type = item_data_type.ItemType.BLOCK
 	amethyst_ore.block_id = 85
 	items[85] = amethyst_ore
 
 	# Chemical Elements (Simplified range for "Periodic Table")
 	# ID 100+ reserved for elements
-	var elements = ["Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon", "Sodium", "Magnesium", "Aluminum", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium", "Indium", "Tin", "Antimony", "Tellurium", "Iodine", "Xenon", "Cesium", "Barium", "Lanthanum", "Cerium", "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium", "Iridium", "Platinum", "Gold", "Mercury", "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon", "Francium", "Radium", "Actinium", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium", "Roentgenium", "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson"]
+	var elements = ["Водород", "Гелий", "Литий", "Бериллий", "Бор", "Углерод", "Азот", "Кислород", "Фтор", "Неон", "Натрий", "Магний", "Алюминий", "Кремний", "Фосфор", "Сера", "Хлор", "Аргон", "Калий", "Кальций", "Скандий", "Титан", "Ванадий", "Хром", "Марганец", "Железо", "Кобальт", "Никель", "Медь", "Цинк", "Галлий", "Германий", "Мышьяк", "Селен", "Бром", "Криптон", "Рубидий", "Стронций", "Иттрий", "Цирконий", "Ниобий", "Молибден", "Технеций", "Рутений", "Родий", "Палладий", "Серебро", "Кадмий", "Индий", "Олово", "Сурьма", "Теллур", "Йод", "Ксенон", "Цезий", "Барий", "Лантан", "Церий", "Празеодим", "Неодим", "Прометий", "Самарий", "Европий", "Гадолиний", "Тербий", "Диспрозий", "Гольмий", "Эрбий", "Тулий", "Иттербий", "Лютеций", "Гафний", "Тантал", "Вольфрам", "Рений", "Осмий", "Иридий", "Платина", "Золото", "Ртуть", "Таллий", "Свинец", "Висмут", "Полоний", "Астат", "Радон", "Франций", "Радий", "Актиний", "Торий", "Протактиний", "Уран", "Нептуний", "Плутоний", "Америций", "Кюрий", "Берклий", "Калифорний", "Эйнштейний", "Фермий", "Менделевий", "Нобелий", "Лоуренсий", "Резерфордий", "Дубний", "Сиборгий", "Борий", "Хассий", "Мейтнерий", "Дармштадтий", "Рентгений", "Коперниций", "Нихоний", "Флеровий", "Московий", "Ливерморий", "Теннессин", "Оганесон"]
 	
 	for i in range(elements.size()):
 		var e = item_data_type.new()
 		e.id = 100 + i
 		e.name = elements[i]
 		e.type = item_data_type.ItemType.RESOURCE # Most are resources
-		if elements[i] in ["Iron", "Gold", "Copper", "Silver", "Lead", "Tin", "Aluminum", "Titanium", "Uranium"]:
+		if elements[i] in ["Железо", "Золото", "Медь", "Серебро", "Свинец", "Олово", "Алюминий", "Титан", "Уран"]:
 			e.type = item_data_type.ItemType.BLOCK # Ores are blocks? Or Resource items dropped by blocks? 
 			# Let's make them Resource Items for now, and have specific Block IDs for their Ore Block form.
 			# Re-mapping: Iron Ore (ID 6) drops Iron (Element 25, ID 125).
@@ -416,6 +515,7 @@ const BLOCK_TOOL_CATEGORY = {
 	43: "shovel",  # Snow (as generated in terrain)
 	15: "shovel",  # Snow (item.block_id)
 	14: "shovel",  # Farmland
+	96: "shovel",  # Clay
 }
 
 func get_block_category(block_type: int) -> String:

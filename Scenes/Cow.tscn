@@ -1,0 +1,68 @@
+[gd_scene load_steps=9 format=3 uid="uid://cow_entity"]
+
+[ext_resource type="Script" path="res://Scripts/Entities/Cow.gd" id="1_cow"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_cow"]
+radius = 0.42
+height = 0.95
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hide"]
+albedo_color = Color(0.25, 0.2, 0.18, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+material = SubResource("StandardMaterial3D_hide")
+size = Vector3(1.05, 0.6, 0.55)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_patch"]
+albedo_color = Color(0.95, 0.94, 0.9, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_head"]
+material = SubResource("StandardMaterial3D_patch")
+size = Vector3(0.36, 0.36, 0.32)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_leg"]
+albedo_color = Color(0.2, 0.16, 0.14, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_leg"]
+material = SubResource("StandardMaterial3D_leg")
+size = Vector3(0.14, 0.4, 0.14)
+
+[node name="Cow" type="CharacterBody3D"]
+script = ExtResource("1_cow")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_cow")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_body")
+
+[node name="Head" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -0.6)
+mesh = SubResource("BoxMesh_head")
+
+[node name="Eyes" type="Node3D" parent="Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -0.16)
+
+[node name="EyeLeft" type="CSGBox3D" parent="Head/Eyes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0, 0)
+size = Vector3(0.06, 0.06, 0.06)
+
+[node name="EyeRight" type="CSGBox3D" parent="Head/Eyes"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0, 0)
+size = Vector3(0.06, 0.06, 0.06)
+
+[node name="LegFrontLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.34, -0.45, -0.17)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegFrontRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.34, -0.45, -0.17)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegBackLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.34, -0.45, 0.17)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegBackRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.34, -0.45, 0.17)
+mesh = SubResource("BoxMesh_leg")

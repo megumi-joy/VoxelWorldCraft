@@ -46,7 +46,7 @@ theme_override_constants/separation = 8
 
 [node name="TitleLabel" type="Label" parent="JournalPanel/Margin/OuterVBox"]
 layout_mode = 2
-text = "FIELD JOURNAL"
+text = "ПОЛЕВОЙ ЖУРНАЛ"
 horizontal_alignment = 1
 
 [node name="ColumnsHBox" type="HBoxContainer" parent="JournalPanel/Margin/OuterVBox"]
@@ -78,5 +78,5 @@ theme_override_constants/separation = 10
 
 [node name="HintLabel" type="Label" parent="JournalPanel/Margin/OuterVBox"]
 layout_mode = 2
-text = "Press J to close"
+text = "Нажмите J, чтобы закрыть"
 horizontal_alignment = 1

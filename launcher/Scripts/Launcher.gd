@@ -129,7 +129,7 @@ func _game_exe_path() -> String:
 func _on_play_pressed() -> void:
 	var exe_path := _game_exe_path()
 	if not FileAccess.file_exists(exe_path):
-		_set_status("Игра не установлена. Нажмите «⬇ Обновить», чтобы установить.", true)
+		_set_status("Игра не установлена. Нажмите «Обновить», чтобы установить.", true)
 		return
 
 	var pid := OS.create_process(exe_path, [])
@@ -156,13 +156,13 @@ func _on_latest_version_ready(result: Dictionary) -> void:
 	var installed := _get_installed_version()
 
 	if installed == "":
-		_update_button.text = "⬇ Установить"
+		_update_button.text = "Установить"
 		_set_status("Игра не установлена. Доступна версия v%s." % _latest_known_version, false)
 	elif VersionUtil.is_newer(_latest_known_version, installed):
-		_update_button.text = "⬇ Обновить"
+		_update_button.text = "Обновить"
 		_set_status("Доступно обновление v%s" % _latest_known_version, false)
 	else:
-		_update_button.text = "⬇ Обновить"
+		_update_button.text = "Обновить"
 		_set_status("Установлена последняя версия.", false)
 
 func _on_update_pressed() -> void:

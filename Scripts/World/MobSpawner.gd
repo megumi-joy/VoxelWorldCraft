@@ -26,9 +26,7 @@ func _process(delta):
 		is_night = time_cycle.sun.light_energy < 0.1 # Threshold for spawning
 
 	if not is_night:
-		despawn_all_mobs() # Optional: Burn them or just despawn? Minecraft keeps them but checks light.
-		# For simplicity, let's just stop spawning. 
-		# If we want them to despawn at day, we can do that.
+		despawn_all_mobs() # Daylight: hostiles don't linger (see despawn_all_mobs()).
 		return
 
 	timer += delta
@@ -106,5 +104,10 @@ func check_despawn():
 				child.queue_free()
 
 func despawn_all_mobs():
-	# Optional logic
-	pass
+	# Hostiles don't survive into daylight (Minecraft-style burn-off, simplified
+	# to an instant despawn -- no fire VFX yet). Duck-typed on take_damage()
+	# same as check_despawn() so it only ever removes actual mobs, never
+	# stray children of this node.
+	for child in get_children():
+		if child.has_method("take_damage"):
+			child.queue_free()

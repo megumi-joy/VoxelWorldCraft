@@ -20,6 +20,7 @@ func _ready():
 	# Debug: Add starter items
 	add_item(1, 10) # Dirt
 	add_item(4, 5) # Wood
+	add_item(73, 2) # Storage Chest (placeable, so the feature is reachable)
 
 func add_item(id: int, count: int) -> bool:
 	var requested = count
@@ -49,6 +50,41 @@ func add_item(id: int, count: int) -> bool:
 
 	inventory_changed.emit()
 	return false # Could not add all
+
+## Moves the contents of slot `from` onto slot `to` -- used by InventoryUI's
+## click-to-pick-up/click-to-place interaction. Three cases, mirroring how
+## every other stack-aware inventory works:
+##   - `to` is empty: the whole stack relocates there.
+##   - `to` holds the SAME item id: merge, capped at 64/slot. If the source
+##     stack doesn't fully fit, the leftover stays behind in `from` instead of
+##     being silently dropped (no dupe/loss either way).
+##   - `to` holds a DIFFERENT item id: swap the two stacks.
+## No-ops (returns false) for an empty `from`, an out-of-range index, or
+## from == to -- callers (InventoryUI) rely on the false return to know
+## nothing changed and skip re-rendering/logging a move that didn't happen.
+func move_item(from: int, to: int) -> bool:
+	if from < 0 or from >= size or to < 0 or to >= size or from == to:
+		return false
+	if items[from] == null:
+		return false
+
+	if items[to] == null:
+		items[to] = items[from]
+		items[from] = null
+	elif items[to].id == items[from].id:
+		var space = 64 - items[to].count
+		var moving = min(space, items[from].count)
+		items[to].count += moving
+		items[from].count -= moving
+		if items[from].count <= 0:
+			items[from] = null
+	else:
+		var tmp = items[to]
+		items[to] = items[from]
+		items[from] = tmp
+
+	inventory_changed.emit()
+	return true
 
 func remove_item(id: int, count: int) -> bool:
 	# Sum across ALL matching stacks first, mirroring how

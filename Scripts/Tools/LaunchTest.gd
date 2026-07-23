@@ -114,3 +114,57 @@ func _ready():
 		showcase_driver.name = "ShowcaseDemoDriver"
 		var tree8 := Engine.get_main_loop() as SceneTree
 		tree8.root.add_child(showcase_driver)
+
+	# Narrow-gap walking verification: builds a synthetic 1-block-wide
+	# corridor and drives the player straight through it, recording position
+	# every frame + a pass/fail summary (see Scripts/Testing/
+	# NarrowGapDemoDriver.gd). Same "attach under the tree root" pattern as
+	# the drivers above.
+	if user_args.has("--narrow-gap-demo"):
+		var narrow_gap_driver = load("res://Scripts/Testing/NarrowGapDemoDriver.gd").new()
+		narrow_gap_driver.name = "NarrowGapDemoDriver"
+		var tree9 := Engine.get_main_loop() as SceneTree
+		tree9.root.add_child(narrow_gap_driver)
+
+	# UI menus verification: Inventory/Crafting/Furnace/Chest -- drives the
+	# real HUD-attached UI nodes (click-to-move, craft, load furnace, chest
+	# transfer) rather than the underlying model classes, see
+	# Scripts/Testing/MenusDemoDriver.gd for exactly what each menu's test
+	# proves. Same "attach under the tree root" pattern as the drivers above.
+	if user_args.has("--menus-demo"):
+		var menus_driver = load("res://Scripts/Testing/MenusDemoDriver.gd").new()
+		menus_driver.name = "MenusDemoDriver"
+		var tree10 := Engine.get_main_loop() as SceneTree
+		tree10.root.add_child(menus_driver)
+
+	# World-content generation verification: ores/biomes/structures actually
+	# generated in the world (owner ask: "наполнить" -- fill the world with
+	# content so it feels alive). See Scripts/Testing/WorldContentDemoDriver.gd
+	# for the scan + assertions. Same "attach under the tree root" pattern as
+	# the drivers above.
+	if user_args.has("--world-content-demo"):
+		var world_content_driver = load("res://Scripts/Testing/WorldContentDemoDriver.gd").new()
+		world_content_driver.name = "WorldContentDemoDriver"
+		var tree11 := Engine.get_main_loop() as SceneTree
+		tree11.root.add_child(world_content_driver)
+
+	# Items verification: tiered tools (speed), food/hunger, and expanded
+	# crafting+furnace recipes (owner ask: fill the game with usable items).
+	# See Scripts/Testing/ItemsDemoDriver.gd for the scan + assertions. Same
+	# "attach under the tree root" pattern as the drivers above.
+	if user_args.has("--items-demo"):
+		var items_driver = load("res://Scripts/Testing/ItemsDemoDriver.gd").new()
+		items_driver.name = "ItemsDemoDriver"
+		var tree12 := Engine.get_main_loop() as SceneTree
+		tree12.root.add_child(items_driver)
+
+	# Creatures/mobs verification: two new passive animals (Pig, Cow, added
+	# alongside the pre-existing Sheep) plus the pre-existing hostile
+	# Mob.gd/MobSpawner.gd night-spawn + player-damage wiring. See
+	# Scripts/Testing/MobsDemoDriver.gd for the scan + assertions. Same
+	# "attach under the tree root" pattern as the drivers above.
+	if user_args.has("--mobs-demo"):
+		var mobs_driver = load("res://Scripts/Testing/MobsDemoDriver.gd").new()
+		mobs_driver.name = "MobsDemoDriver"
+		var tree13 := Engine.get_main_loop() as SceneTree
+		tree13.root.add_child(mobs_driver)

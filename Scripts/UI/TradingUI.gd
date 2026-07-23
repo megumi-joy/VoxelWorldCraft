@@ -41,6 +41,6 @@ func trade(cost_id: int, cost_amount: int, reward_id: int, reward_amount: int):
 		inventory.remove_item(cost_id, cost_amount)
 		inventory.add_item(reward_id, reward_amount)
 		# Feedback
-		label.text = "Trade Successful!"
+		label.text = "Обмен выполнен!"
 	else:
-		label.text = "Not enough items!"
+		label.text = "Недостаточно предметов!"

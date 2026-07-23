@@ -117,7 +117,7 @@ func _style_settings_button() -> void:
 	settings_button.add_theme_stylebox_override("hover", style)
 	settings_button.add_theme_stylebox_override("pressed", style)
 	settings_button.add_theme_stylebox_override("focus", style)
-	settings_button.add_theme_font_size_override("font_size", 22)
+	settings_button.add_theme_font_size_override("font_size", 16)
 	settings_button.add_theme_color_override("font_color", COL_PANEL_BORDER)
 	settings_button.add_theme_color_override("font_hover_color", COL_PANEL_BORDER)
 	settings_button.add_theme_color_override("font_pressed_color", COL_PANEL_BORDER)
@@ -144,8 +144,8 @@ const DEATH_FADE_TIME := 0.35
 const DEATH_HOLD_TIME := 1.2
 
 func show_death_screen(reason: String) -> void:
-	death_cause_label.text = "YOU DIED: " + reason
-	death_respawn_label.text = "Respawning..."
+	death_cause_label.text = "ВЫ ПОГИБЛИ: " + reason
+	death_respawn_label.text = "Возрождение..."
 	death_overlay.visible = true
 	death_overlay.color.a = 0.0
 
@@ -166,10 +166,10 @@ func update_ai_button(enabled: bool) -> void:
 	style.shadow_size = 4
 	style.shadow_offset = Vector2(0, 3)
 	if enabled:
-		ai_button.text = "AI ACTIVE"
+		ai_button.text = "ИИ АКТИВЕН"
 		style.bg_color = COL_AI_ON
 	else:
-		ai_button.text = "MANUAL"
+		ai_button.text = "ВРУЧНУЮ"
 		style.bg_color = COL_AI_OFF
 
 	ai_button.add_theme_stylebox_override("normal", style)

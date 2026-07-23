@@ -51,10 +51,10 @@ enum ShadowQuality { OFF, LOW, HIGH }
 enum AAMode { OFF, FXAA, MSAA_2X, MSAA_4X }
 enum SDFGIQuality { LOW, MEDIUM, HIGH, ULTRA }
 
-const PRESET_NAMES := ["Low", "Medium", "High", "Ultra", "Custom"]
-const SHADOW_QUALITY_NAMES := ["Off", "Low", "High"]
-const AA_MODE_NAMES := ["Off", "FXAA", "MSAA 2x", "MSAA 4x"]
-const SDFGI_QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
+const PRESET_NAMES := ["Низкое", "Среднее", "Высокое", "Ультра", "Свой"]
+const SHADOW_QUALITY_NAMES := ["Выкл", "Низкое", "Высокое"]
+const AA_MODE_NAMES := ["Выкл", "FXAA", "MSAA 2x", "MSAA 4x"]
+const SDFGI_QUALITY_NAMES := ["Низкое", "Среднее", "Высокое", "Ультра"]
 
 const VIEW_DISTANCE_MIN := 2
 # Owner feedback (mid=654): "прорисовка и лод типа на 100 можно?" -- raised

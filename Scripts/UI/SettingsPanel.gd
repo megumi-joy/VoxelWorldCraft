@@ -119,43 +119,43 @@ func _build_graphics_section() -> void:
 	graphics_title_label.add_theme_font_size_override("font_size", 20)
 	graphics_title_label.add_theme_color_override("font_color", COL_TEXT)
 
-	var preset_row := _add_row("Quality Preset")
+	var preset_row := _add_row("Пресет качества")
 	_preset_dropdown = _add_dropdown(preset_row, GraphicsSettings.PRESET_NAMES, GraphicsSettings.preset)
 	_preset_dropdown.item_selected.connect(_on_preset_selected)
 
-	var sdfgi_row := _add_row("Global Illumination (SDFGI)")
+	var sdfgi_row := _add_row("Глобальное освещение (SDFGI)")
 	_sdfgi_check = _add_checkbox(sdfgi_row, GraphicsSettings.sdfgi_enabled)
 	_sdfgi_check.toggled.connect(_on_sdfgi_toggled)
 
-	var sdfgi_quality_row := _add_row("  GI Quality")
+	var sdfgi_quality_row := _add_row("  Качество GI")
 	_sdfgi_quality_dropdown = _add_dropdown(sdfgi_quality_row, GraphicsSettings.SDFGI_QUALITY_NAMES, GraphicsSettings.sdfgi_quality)
 	_sdfgi_quality_dropdown.item_selected.connect(_on_sdfgi_quality_selected)
 
-	var ssr_row := _add_row("Reflections (SSR)")
+	var ssr_row := _add_row("Отражения (SSR)")
 	_ssr_check = _add_checkbox(ssr_row, GraphicsSettings.ssr_enabled)
 	_ssr_check.toggled.connect(_on_ssr_toggled)
 
-	var ssao_row := _add_row("Ambient Occlusion (SSAO)")
+	var ssao_row := _add_row("Затенение (SSAO)")
 	_ssao_check = _add_checkbox(ssao_row, GraphicsSettings.ssao_enabled)
 	_ssao_check.toggled.connect(_on_ssao_toggled)
 
-	var ssil_row := _add_row("Indirect Light (SSIL)")
+	var ssil_row := _add_row("Непрямой свет (SSIL)")
 	_ssil_check = _add_checkbox(ssil_row, GraphicsSettings.ssil_enabled)
 	_ssil_check.toggled.connect(_on_ssil_toggled)
 
-	var glow_row := _add_row("Glow / Bloom")
+	var glow_row := _add_row("Свечение (Glow/Bloom)")
 	_glow_check = _add_checkbox(glow_row, GraphicsSettings.glow_enabled)
 	_glow_check.toggled.connect(_on_glow_toggled)
 
-	var shadow_row := _add_row("Shadow Quality")
+	var shadow_row := _add_row("Качество теней")
 	_shadow_dropdown = _add_dropdown(shadow_row, GraphicsSettings.SHADOW_QUALITY_NAMES, GraphicsSettings.shadow_quality)
 	_shadow_dropdown.item_selected.connect(_on_shadow_quality_selected)
 
-	var aa_row := _add_row("Antialiasing")
+	var aa_row := _add_row("Сглаживание")
 	_aa_dropdown = _add_dropdown(aa_row, GraphicsSettings.AA_MODE_NAMES, GraphicsSettings.aa_mode)
 	_aa_dropdown.item_selected.connect(_on_aa_mode_selected)
 
-	var view_dist_row := _add_row("View Distance")
+	var view_dist_row := _add_row("Дальность прорисовки")
 	_view_distance_slider = HSlider.new()
 	_view_distance_slider.custom_minimum_size = Vector2(140, 28)
 	_view_distance_slider.min_value = GraphicsSettings.VIEW_DISTANCE_MIN
@@ -221,7 +221,7 @@ func _refresh_graphics_controls() -> void:
 	_shadow_dropdown.selected = GraphicsSettings.shadow_quality
 	_aa_dropdown.selected = GraphicsSettings.aa_mode
 	_view_distance_slider.value = GraphicsSettings.view_distance
-	_view_distance_value_label.text = "%d chunks" % GraphicsSettings.view_distance
+	_view_distance_value_label.text = "%d чанков" % GraphicsSettings.view_distance
 	_syncing = false
 
 func _on_preset_selected(index: int) -> void:

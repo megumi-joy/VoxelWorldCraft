@@ -34,4 +34,4 @@ scroll_following = true
 [node name="LineEdit" type="LineEdit" parent="ChatBox"]
 visible = false
 layout_mode = 2
-placeholder_text = "Type message..."
+placeholder_text = "Введите сообщение..."

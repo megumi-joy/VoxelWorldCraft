@@ -35,7 +35,7 @@ func _on_text_submitted(text: String):
 	if text.begins_with("/"):
 		process_command(text)
 	else:
-		add_message("Player: " + text)
+		add_message("Игрок: " + text)
 		
 	close_chat()
 
@@ -56,12 +56,12 @@ func process_command(text: String):
 				var inv = player.get_node_or_null("Inventory")
 				if inv:
 					inv.add_item(id, amount)
-					add_message("Gave " + str(amount) + " of item " + str(id))
+					add_message("Выдано " + str(amount) + " шт. предмета " + str(id))
 	elif cmd == "/time":
 		# /time value
 		if parts.size() >= 2:
 			var time = float(parts[1])
 			# Set time logic if available via NetworkManager or VoxelWorld
-			add_message("Time set to " + str(time))
+			add_message("Время установлено: " + str(time))
 	else:
-		add_message("Unknown command: " + cmd)
+		add_message("Неизвестная команда: " + cmd)

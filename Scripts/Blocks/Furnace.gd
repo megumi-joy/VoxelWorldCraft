@@ -103,6 +103,15 @@ func get_smelting_result(input_id: int) -> int:
 	# discovery behavior on items 80/81).
 	if input_id == 81: return 64
 	if input_id == 80: return 65
+	# Raw Meat (94, see Sheep.gd/ItemDatabase.gd) -> Cooked Meat (95): higher
+	# nutrition than eating it raw, same "cook for a better payoff" shape as
+	# Wheat -> Bread.
+	if input_id == 94: return 95
+	# Sand (42) -> Glass (97); Clay (96, new shallow ORE_TABLE entry in
+	# Chunk.gd) -> Brick (98). Both new placeable building blocks -- see
+	# ItemDatabase.gd IDs 96-98.
+	if input_id == 42: return 97
+	if input_id == 96: return 98
 	return 0
 
 func get_fuel_time(fuel_id: int) -> float:

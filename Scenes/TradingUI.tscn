@@ -18,44 +18,46 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -150.0
+offset_left = -190.0
 offset_top = -100.0
-offset_right = 150.0
+offset_right = 190.0
 offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Label" type="Label" parent="Panel"]
 layout_mode = 0
-offset_left = 110.0
+offset_left = 90.0
 offset_top = 10.0
-offset_right = 190.0
+offset_right = 290.0
 offset_bottom = 33.0
-text = "Villager Trade"
+text = "Торговля с жителем"
 
 [node name="BtnWoodCoal" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 50.0
+offset_left = 30.0
 offset_top = 50.0
-offset_right = 250.0
+offset_right = 350.0
 offset_bottom = 81.0
-text = "4 Wood -> 1 Coal"
+clip_text = true
+text = "4 Дерево -> 1 Угольная руда"
 
 [node name="BtnCoalIron" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 50.0
+offset_left = 30.0
 offset_top = 100.0
-offset_right = 250.0
+offset_right = 350.0
 offset_bottom = 131.0
-text = "2 Coal -> 1 Iron"
+clip_text = true
+text = "2 Угольная руда -> 1 Железная руда"
 
 [node name="CloseButton" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 110.0
+offset_left = 140.0
 offset_top = 150.0
-offset_right = 190.0
+offset_right = 240.0
 offset_bottom = 181.0
-text = "Close"
+text = "Закрыть"
 
 [connection signal="pressed" from="Panel/BtnWoodCoal" to="." method="_on_trade_wood_coal_pressed"]
 [connection signal="pressed" from="Panel/BtnCoalIron" to="." method="_on_trade_coal_iron_pressed"]

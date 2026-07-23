@@ -187,11 +187,59 @@ func generate_data():
 					if r < 0.01:
 						struct_gen.generate_pine(self, Vector3i(x, height, z))
 
+	# Village Structure Pass -- generated structures (owner ask: "наполнить"
+	# the world, feel alive, not just terrain/flora). One deterministic roll
+	# per chunk (not per-voxel) using a DEDICATED RandomNumberGenerator seeded
+	# from (chunk_position, world seed) so it never perturbs the per-voxel
+	# `rng` sequence the tree/flora loop above already consumes -- same
+	# isolation principle as moisture_noise being its own FastNoiseLite
+	# instance rather than reusing `noise`. Fixed local (8,8) placement point:
+	# always inside the chunk (footprint radius 1, so 7-9 well within 0-15),
+	# so no boundary padding logic is needed the way the per-voxel loop needs
+	# its (2,14) padding range.
+	var struct_rng = RandomNumberGenerator.new()
+	struct_rng.seed = hash(str(chunk_position) + "_struct_" + str(noise.seed))
+	var sx = chunk_position.x * 16 + 8
+	var sz = chunk_position.y * 16 + 8
+	var s_height = int((noise.get_noise_2d(sx, sz) + 1) * 32) + 64
+	if voxel_data.has(Vector3i(8, s_height, 8)):
+		var s_temp = noise.get_noise_2d(sx * 0.5, sz * 0.5)
+		var s_moisture = moisture_noise.get_noise_2d(sx, sz)
+		var s_biome = get_biome(s_temp, s_moisture)
+		var s_roll = struct_rng.randf()
+		match s_biome:
+			"Forest", "Plains":
+				# ~8% of chunks get a hut, another ~5% get a well -- expected
+				# ~13 per 100 chunks; at render_distance=4 (81 chunks) that's
+				# comfortably several of each, not a coin-flip on one run.
+				if s_roll < 0.08:
+					struct_gen.generate_hut(self, Vector3i(8, s_height, 8))
+				elif s_roll < 0.13:
+					struct_gen.generate_well(self, Vector3i(8, s_height, 8))
+			"Desert":
+				if s_roll < 0.05:
+					struct_gen.generate_well(self, Vector3i(8, s_height, 8))
+
 	# Ore Generation (Deep) -- depth- and (for a couple of minerals)
 	# biome-gated. Rarer ores are checked first so they get first claim on a
 	# candidate voxel before common Coal/Copper (checked last) usually wins
 	# the roll; see ORE_TABLE below for the plausible-geology reasoning per
 	# mineral.
+	#
+	# Clustered into noise-based VEINS rather than pure independent per-voxel
+	# chance: a dedicated 3D FastNoiseLite per ore id (never the shared
+	# terrain `noise` -- mutating that would corrupt height gen for every
+	# chunk, same reasoning as moisture_noise being its own instance) gates
+	# which voxels are even eligible to roll. Voxels inside an ore's
+	# noise-blob form a connected pocket; only those roll `chance`, so ore
+	# reads underground as clustered veins instead of scattered lone blocks.
+	var ore_noises := {}
+	for ore in ORE_TABLE:
+		var vein_noise := FastNoiseLite.new()
+		vein_noise.seed = noise.seed + ore.id * 7919 # decorrelate each ore's veins spatially
+		vein_noise.frequency = 0.09
+		ore_noises[ore.id] = vein_noise
+
 	for x in range(16):
 		for z in range(16):
 			var global_x = chunk_position.x * 16 + x
@@ -202,46 +250,58 @@ func generate_data():
 			var biome = get_biome(temp, moisture)
 
 			for y in range(1, height - 5):
-				var ore_id = pick_ore(y, biome, rng)
+				var ore_id = pick_ore(y, biome, rng, global_x, global_z, ore_noises)
 				if ore_id != 0:
 					voxel_data[Vector3i(x, y, z)] = ore_id
 
 	struct_gen.free()
 	is_generating = false
 
-# id, y_min/y_max (inclusive world depth), chance (rolled per eligible
-# voxel), biomes (empty = spawns under any biome). Ordered rarest-first so a
-# rare ore's low-probability roll gets first shot at a voxel before a common
-# ore checked later in the list usually claims it.
+# id, y_min/y_max (inclusive world depth), chance (rolled per eligible voxel
+# INSIDE a vein pocket -- see vein_threshold), biomes (empty = spawns under
+# any biome), vein_threshold (FastNoiseLite 3D value a voxel must clear to
+# even be considered part of this ore's vein -- higher = smaller/rarer
+# pockets). Ordered rarest-first so a rare ore's low-probability roll gets
+# first shot at a voxel before a common ore checked later in the list
+# usually claims it.
 const ORE_TABLE = [
 	# Gold: very deep, very rare -- real gold veins form deep, at the
 	# outer limit of what a shallow prototype world can represent.
-	{"id": 81, "y_min": 1,  "y_max": 22,  "chance": 0.0006, "biomes": []},
+	{"id": 81, "y_min": 1,  "y_max": 22,  "chance": 0.01,  "vein_threshold": 0.60, "biomes": []},
 	# Amethyst: rare crystal geode, mid-deep, any biome -- gem tier between
 	# Gold and Hematite in rarity.
-	{"id": 85, "y_min": 12, "y_max": 45,  "chance": 0.001,  "biomes": []},
+	{"id": 85, "y_min": 12, "y_max": 45,  "chance": 0.015, "vein_threshold": 0.55, "biomes": []},
 	# Hematite (iron oxide): moderately rare, mid-deep; biome-gated to
 	# Desert since its rust-red color is also what tints desert sand/rock.
-	{"id": 83, "y_min": 20, "y_max": 55,  "chance": 0.0018, "biomes": ["Desert"]},
+	{"id": 83, "y_min": 20, "y_max": 55,  "chance": 0.02,  "vein_threshold": 0.45, "biomes": ["Desert"]},
 	# Quartz: fairly common, mid depth; gated to the two "hard ground"
 	# biomes (Desert/Tundra) rather than soft Forest/Plains loam.
-	{"id": 82, "y_min": 25, "y_max": 60,  "chance": 0.0025, "biomes": ["Desert", "Tundra"]},
+	{"id": 82, "y_min": 25, "y_max": 60,  "chance": 0.025, "vein_threshold": 0.35, "biomes": ["Desert", "Tundra"]},
 	# Iron: deep, uncommon (kept from the original ore pass).
-	{"id": 6,  "y_min": 1,  "y_max": 40,  "chance": 0.0015, "biomes": []},
+	{"id": 6,  "y_min": 1,  "y_max": 40,  "chance": 0.02,  "vein_threshold": 0.30, "biomes": []},
 	# Malachite (copper carbonate): shallow-mid, forms in oxidized zones
 	# near the surface -- gated to Forest/Plains topsoil biomes.
-	{"id": 84, "y_min": 40, "y_max": 75,  "chance": 0.002,  "biomes": ["Forest", "Plains"]},
+	{"id": 84, "y_min": 40, "y_max": 75,  "chance": 0.025, "vein_threshold": 0.30, "biomes": ["Forest", "Plains"]},
 	# Copper: shallow-mid, common, any biome.
-	{"id": 80, "y_min": 35, "y_max": 70,  "chance": 0.0035, "biomes": []},
+	{"id": 80, "y_min": 35, "y_max": 70,  "chance": 0.03,  "vein_threshold": 0.20, "biomes": []},
+	# Clay: shallow sediment near the surface (unlike the deeper metal ores
+	# above), common, any biome -- new resource feeding the Sand->Glass /
+	# Clay->Brick furnace recipes (see ItemDatabase.gd IDs 96-98, Furnace.gd).
+	{"id": 96, "y_min": 50, "y_max": 85,  "chance": 0.03,  "vein_threshold": 0.25, "biomes": []},
 	# Coal: common, any depth/biome (kept from the original ore pass).
-	{"id": 5,  "y_min": 1,  "y_max": 200, "chance": 0.004,  "biomes": []},
+	{"id": 5,  "y_min": 1,  "y_max": 200, "chance": 0.05,  "vein_threshold": 0.10, "biomes": []},
 ]
 
-func pick_ore(y: int, biome: String, rng: RandomNumberGenerator) -> int:
+func pick_ore(y: int, biome: String, rng: RandomNumberGenerator, gx: int, gz: int, ore_noises: Dictionary) -> int:
 	for ore in ORE_TABLE:
 		if y < ore.y_min or y > ore.y_max:
 			continue
 		if ore.biomes.size() > 0 and not ore.biomes.has(biome):
+			continue
+		# Vein gate: only voxels inside this ore's noise-blob are even
+		# eligible to roll -- see ORE_TABLE comment above.
+		var vein_noise: FastNoiseLite = ore_noises[ore.id]
+		if vein_noise.get_noise_3d(gx, y, gz) < ore.vein_threshold:
 			continue
 		if rng.randf() < ore.chance:
 			return ore.id
@@ -341,6 +401,9 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 6: atlas_idx = 1; atlas_row = 1 # Iron
 	elif type == 13: atlas_idx = 2; atlas_row = 1 # Planks
 	elif type == 14: atlas_idx = 3; atlas_row = 1 # Farmland
+	elif type == 96: atlas_idx = 4; atlas_row = 1 # Clay
+	elif type == 97: atlas_idx = 5; atlas_row = 1 # Glass
+	elif type == 98: atlas_idx = 6; atlas_row = 1 # Brick
 	
 	# Row 2: Biomes
 	elif type == 42: atlas_idx = 1; atlas_row = 2 # Sand
@@ -372,6 +435,7 @@ func create_face(st: SurfaceTool, pos: Vector3i, normal: Vector3):
 	elif type == 83: atlas_idx = 5; atlas_row = 5 # Hematite
 	elif type == 84: atlas_idx = 6; atlas_row = 5 # Malachite Ore
 	elif type == 85: atlas_idx = 7; atlas_row = 5 # Amethyst Ore
+	elif type == 73: atlas_idx = 5; atlas_row = 0 # Storage Chest (block-entity)
 
 	# Half-texel inset so a face's UVs never reach the exact atlas-cell edge --
 	# without it, sampling at the boundary can pick up the neighbouring cell and
