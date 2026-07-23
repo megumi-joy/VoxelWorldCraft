@@ -21,11 +21,31 @@ var player_inventory # : Inventory
 @onready var inv_label = $Panel/InvLabel
 @onready var inv_grid = $Panel/InventoryGrid
 
+# The 3 fixed slots (Input/Fuel/Output) are 60x60 in the .tscn; the player-
+# inventory grid below is rebuilt every update_ui() at 56 (matches Inventory/
+# ChestUI's grid math -- 8 columns * 56 + 7 * 6px separation = 490, exactly
+# the InventoryGrid rect width already reserved in FurnaceUI.tscn). Two
+# constants instead of one so the grid keeps fitting inside the panel.
 const SLOT_SIZE := 60.0
+const GRID_SLOT_SIZE := 56.0
+
+# Minecraft-style chrome, same palette as InventoryUI.gd/ChestUI.gd -- opaque
+# dark panel + light border, cream slot squares, so all menus read as one
+# consistent set instead of the previous half-transparent look.
+const COL_PANEL_BG := Color(0.10, 0.07, 0.05, 1.0)
+const COL_PANEL_BORDER := Color(0.85, 0.78, 0.62, 0.95)
+const COL_SLOT_BG := Color(1.0, 0.97, 0.88, 0.92)
+const COL_SLOT_BORDER := Color(0.16, 0.09, 0.04, 0.9)
+const COL_FLAME_FILL := Color(1.0, 0.45, 0.05, 1.0)
+const COL_FLAME_BG := Color(0.15, 0.08, 0.04, 0.9)
+const COL_COOK_FILL := Color(0.95, 0.75, 0.15, 1.0)
+const COL_COOK_BG := Color(0.15, 0.08, 0.04, 0.9)
 
 func _ready():
 	if title_label:
 		title_label.text = "Печь"
+		title_label.add_theme_font_size_override("font_size", 20)
+		title_label.add_theme_color_override("font_color", COL_PANEL_BORDER)
 	if input_label:
 		input_label.text = "Вход"
 	if fuel_label:
@@ -35,16 +55,59 @@ func _ready():
 	if inv_label:
 		inv_label.text = "Инвентарь"
 
-	# Rounded HUD-style chrome on the 3 fixed slots (see ItemIcon.gd) -- these
-	# are persistent scene nodes (not recreated each update_ui() like the
-	# grid buttons below), so the style only needs applying once.
-	ItemIcon.apply_slot_style(input_slot)
-	ItemIcon.apply_slot_style(fuel_slot)
-	ItemIcon.apply_slot_style(output_slot)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = COL_PANEL_BG
+	panel_style.set_corner_radius_all(10)
+	panel_style.set_border_width_all(4)
+	panel_style.border_color = COL_PANEL_BORDER
+	panel_style.shadow_color = Color(0, 0, 0, 0.4)
+	panel_style.shadow_size = 12
+	$Panel.add_theme_stylebox_override("panel", panel_style)
+
+	# Opaque cream chrome on the 3 fixed slots -- persistent scene nodes (not
+	# recreated each update_ui() like the grid buttons below), so the style
+	# only needs applying once.
+	_style_fixed_slot(input_slot)
+	_style_fixed_slot(fuel_slot)
+	_style_fixed_slot(output_slot)
+
+	_style_burn_bar()
 
 	input_slot.pressed.connect(_on_furnace_slot_pressed.bind(0))
 	fuel_slot.pressed.connect(_on_furnace_slot_pressed.bind(1))
 	output_slot.pressed.connect(_on_furnace_slot_pressed.bind(2))
+
+func _style_fixed_slot(slot: Button) -> void:
+	var style := StyleBoxFlat.new()
+	style.set_corner_radius_all(8)
+	style.set_border_width_all(3)
+	style.bg_color = COL_SLOT_BG
+	style.border_color = COL_SLOT_BORDER
+	for state in ["normal", "hover", "pressed", "focus"]:
+		slot.add_theme_stylebox_override(state, style)
+
+# BurnBar (fuel level, rotated vertical) and CookBar (smelt progress, between
+# Вход and Выход) get an explicit flame-colored fill instead of the plain
+# default ProgressBar look -- this pair IS the furnace's smelting/flame
+# indicator, filling as fuel burns and the item cooks.
+func _style_burn_bar() -> void:
+	var flame_bg := StyleBoxFlat.new()
+	flame_bg.bg_color = COL_FLAME_BG
+	flame_bg.set_corner_radius_all(4)
+	var flame_fill := StyleBoxFlat.new()
+	flame_fill.bg_color = COL_FLAME_FILL
+	flame_fill.set_corner_radius_all(4)
+	burn_bar.add_theme_stylebox_override("background", flame_bg)
+	burn_bar.add_theme_stylebox_override("fill", flame_fill)
+
+	var cook_bg := StyleBoxFlat.new()
+	cook_bg.bg_color = COL_COOK_BG
+	cook_bg.set_corner_radius_all(4)
+	var cook_fill := StyleBoxFlat.new()
+	cook_fill.bg_color = COL_COOK_FILL
+	cook_fill.set_corner_radius_all(4)
+	cook_bar.add_theme_stylebox_override("background", cook_bg)
+	cook_bar.add_theme_stylebox_override("fill", cook_fill)
 
 func set_furnace(f: Node):
 	if furnace and furnace.furnace_updated.is_connected(update_ui):
@@ -103,12 +166,12 @@ func _rebuild_inv_grid():
 	var db = get_node_or_null("/root/ItemDatabase")
 	for i in range(player_inventory.size):
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
-		ItemIcon.apply_slot_style(btn)
+		btn.custom_minimum_size = Vector2(GRID_SLOT_SIZE, GRID_SLOT_SIZE)
+		_style_fixed_slot(btn)
 
 		var item = player_inventory.items[i]
 		var item_data = db.get_item(item.id) if (item and db) else null
-		ItemIcon.populate_slot(btn, item_data, item.count if item else 0, SLOT_SIZE)
+		ItemIcon.populate_slot(btn, item_data, item.count if item else 0, GRID_SLOT_SIZE)
 
 		btn.pressed.connect(_on_inv_slot_pressed.bind(i))
 		inv_grid.add_child(btn)

@@ -14,7 +14,14 @@ extends CharacterBody3D
 # stopping). Air accel/friction are lower -- reduced air control, momentum
 # carries like a real jump arc instead of steering on a dime mid-air.
 @export var ground_acceleration: float = 22.0
-@export var ground_friction: float = 18.0
+# Was 18.0 -- at sprint_speed=8 that took ~0.44s / ~1.8 units to stop, which
+# read as the "скольжение при остановке" (sliding on stop) complaint. 30
+# stops sprint in ~0.27s / ~1.1 units: still a hair of weighty slide (not an
+# instant robotic snap-to-zero -- see move_toward() in
+# _apply_horizontal_movement() below), just noticeably tighter. Flag for the
+# lead to eyeball on --movement-demo -- this is a feel tuning call, not a
+# logic fix.
+@export var ground_friction: float = 30.0
 @export var air_acceleration: float = 6.0
 @export var air_friction: float = 2.0
 

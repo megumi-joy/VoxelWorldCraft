@@ -9,8 +9,11 @@ extends Node
 ##
 ## Exercises, in order:
 ##   1. Crafting: waits for CraftingUI.inventory to wire up (proves the
-##      _ready()-race fix -- see CraftingUI.gd), then crafts Wood -> Planks
-##      via the real on_craft() path. Asserts Planks appeared + Wood consumed.
+##      _ready()-race fix -- see CraftingUI.gd), then crafts Wood -> Planks by
+##      driving the real 3x3-grid + recipe-book UI path (select the recipe,
+##      then "click" the result slot), which ends up calling on_craft()/
+##      CraftingManager.craft() the same as a human would. Asserts the grid
+##      shows the recipe, Planks appeared, and Wood was consumed.
 ##   2. Inventory: adds a marker item, then drives InventoryUI's real
 ##      click-to-pick-up/click-to-place handler (_on_slot_pressed) to move it
 ##      from one slot to another. Asserts the move landed and the source is
@@ -189,7 +192,19 @@ func _test_crafting() -> void:
 
 	crafting_ui.update_ui()
 	# Recipe 0 is Wood(1) -> Planks(4), first one CraftingManager.gd appends.
-	crafting_ui.on_craft(0)
+	# Drive the real 3x3-grid + recipe-book UI path (see CraftingUI.gd) rather
+	# than calling on_craft() directly: select the recipe like a book-row
+	# click would (lays Wood into the crafting grid, Planks into the result
+	# slot), assert the grid/result actually reflect it, then "click" the
+	# result slot -- which is what finally calls on_craft()/craft() under the
+	# hood, so this still exercises the same CraftingManager path the
+	# assertions below depend on.
+	crafting_ui._on_recipe_selected(0)
+	_assert("crafting_grid_shows_recipe", crafting_ui.selected_recipe == 0,
+		"selected_recipe=" + str(crafting_ui.selected_recipe))
+	_assert("crafting_grid_populated", crafting_ui.craft_slot_buttons[4].get_child_count() > 0,
+		"center grid slot should show Wood after selecting recipe 0")
+	crafting_ui._on_result_pressed()
 
 	var wood_after = _count_of(inventory, WOOD_ID)
 	var planks_after = _count_of(inventory, PLANKS_ID)

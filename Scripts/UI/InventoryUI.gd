@@ -4,6 +4,18 @@ extends Control
 @onready var title_label = $Panel/TitleLabel
 var inventory
 
+# Minecraft-style chrome: opaque dark panel + light border, cream slot
+# squares + dark border (same palette HotbarUI.gd already uses for the
+# bottom hotbar), so this menu reads as one consistent chunky-hypercasual
+# set instead of the previous half-transparent "glass" look the world
+# showed through.
+const COL_PANEL_BG := Color(0.10, 0.07, 0.05, 1.0)
+const COL_PANEL_BORDER := Color(0.85, 0.78, 0.62, 0.95)
+const COL_SLOT_BG := Color(1.0, 0.97, 0.88, 0.92)
+const COL_SLOT_BORDER := Color(0.16, 0.09, 0.04, 0.9)
+const COL_SLOT_SELECTED_BG := Color(1.0, 0.93, 0.55, 0.98)
+const COL_SLOT_SELECTED_BORDER := Color(1.0, 0.75, 0.05, 1.0)
+
 # Click-to-pick-up / click-to-place: first click on a non-empty slot "picks
 # up" that slot (remembered here, slot gets a highlight border); a second
 # click on any slot (including the same one, which cancels) calls
@@ -15,25 +27,23 @@ var inventory
 var _selected_slot: int = -1
 
 func _ready():
-	# Style the main panel for Glassmorphism
+	# Opaque Minecraft-style panel chrome -- dense dark backing + a light
+	# border, no world showing through (the old translucent "glass" style
+	# read as unfinished).
 	var panel = $Panel
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.05, 0.05, 0.7) # Darker glass
-	style.corner_radius_top_left = 15
-	style.corner_radius_top_right = 15
-	style.corner_radius_bottom_right = 15
-	style.corner_radius_bottom_left = 15
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = Color(1, 1, 1, 0.15) # Subtle border
-	style.shadow_color = Color(0, 0, 0, 0.3)
-	style.shadow_size = 10
+	style.bg_color = COL_PANEL_BG
+	style.set_corner_radius_all(10)
+	style.set_border_width_all(4)
+	style.border_color = COL_PANEL_BORDER
+	style.shadow_color = Color(0, 0, 0, 0.4)
+	style.shadow_size = 12
 	panel.add_theme_stylebox_override("panel", style)
 
 	if title_label:
 		title_label.text = "Инвентарь"
+		title_label.add_theme_font_size_override("font_size", 20)
+		title_label.add_theme_color_override("font_color", COL_PANEL_BORDER)
 
 	# Find player inventory. ROOT CAUSE of "инвентарь не видно только панель"
 	# (owner mid=733): this UI's _ready() fires before the player's "Inventory"
@@ -120,22 +130,16 @@ func update_ui():
 		slot.toggle_mode = false
 
 		var slot_style = StyleBoxFlat.new()
-		slot_style.corner_radius_top_left = 8
-		slot_style.corner_radius_top_right = 8
-		slot_style.corner_radius_bottom_right = 8
-		slot_style.corner_radius_bottom_left = 8
-		slot_style.border_width_left = 1
-		slot_style.border_width_top = 1
-		slot_style.border_width_right = 1
-		slot_style.border_width_bottom = 1
+		slot_style.set_corner_radius_all(8)
+		slot_style.set_border_width_all(3)
 		if i == _selected_slot:
 			# Picked-up slot: highlighted so it's obvious a second click will
 			# place/merge/swap onto whatever slot is clicked next.
-			slot_style.bg_color = Color(1.0, 0.85, 0.2, 0.35)
-			slot_style.border_color = Color(1.0, 0.85, 0.2, 0.9)
+			slot_style.bg_color = COL_SLOT_SELECTED_BG
+			slot_style.border_color = COL_SLOT_SELECTED_BORDER
 		else:
-			slot_style.bg_color = Color(1, 1, 1, 0.07) # Subtle, but visible enough that an empty slot still reads as a slot
-			slot_style.border_color = Color(1, 1, 1, 0.18)
+			slot_style.bg_color = COL_SLOT_BG
+			slot_style.border_color = COL_SLOT_BORDER
 		slot.add_theme_stylebox_override("normal", slot_style)
 		slot.add_theme_stylebox_override("hover", slot_style)
 		slot.add_theme_stylebox_override("pressed", slot_style)

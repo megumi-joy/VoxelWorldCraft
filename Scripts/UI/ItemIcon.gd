@@ -123,10 +123,13 @@ static func _fallback_color(item_data) -> Color:
 
 	return Color(0.65, 0.45, 0.85) # generic RESOURCE fallback
 
-## Builds one icon control (atlas TextureRect if the item has a real block
-## texture, otherwise a rounded color-swatch panel). `ref_node` just needs to
-## be any node currently inside the scene tree (used to resolve the shared
-## world atlas texture via an absolute node path).
+## Builds one icon control: atlas TextureRect for a real block texture,
+## procedurally-drawn glyph TextureRect (ItemIconGenerator) for everything
+## else (tools/food/ingots/resources/block-entities), rounded color-swatch
+## panel only as a last-resort fallback (block item while the world atlas
+## hasn't loaded yet, or a glyph the generator doesn't recognize). `ref_node`
+## just needs to be any node currently inside the scene tree (used to resolve
+## the shared world atlas texture via an absolute node path).
 static func make_icon_node(item_data, ref_node: Node, icon_size: float) -> Control:
 	var cell = ATLAS_CELL.get(item_data.id)
 	var atlas_tex: Texture2D = _get_atlas_texture(ref_node) if cell != null else null
@@ -149,9 +152,27 @@ static func make_icon_node(item_data, ref_node: Node, icon_size: float) -> Contr
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		return rect
 
+	if cell == null:
+		# preload (compile-time const) instead of the global class_name so this
+		# resolves even when .godot's global class cache hasn't registered the
+		# freshly-added ItemIconGenerator.gd (headless/container runs).
+		var glyph_tex: ImageTexture = preload("res://Scripts/UI/ItemIconGenerator.gd").get_texture(item_data)
+		if glyph_tex:
+			var rect := TextureRect.new()
+			rect.texture = glyph_tex
+			rect.custom_minimum_size = Vector2(icon_size, icon_size)
+			rect.size = Vector2(icon_size, icon_size)
+			rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			rect.stretch_mode = TextureRect.STRETCH_SCALE
+			rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			return rect
+
 	# Fallback: rounded flat-color swatch (mirrors HotbarUI.gd's existing
 	# icon-swatch style so a slot without a real texture still reads as an
-	# "icon", never as bare text).
+	# "icon", never as bare text). Only reached for a block item while the
+	# world atlas texture isn't resolved yet, or an id ItemIconGenerator has
+	# no glyph for.
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(icon_size, icon_size)
 	panel.size = Vector2(icon_size, icon_size)

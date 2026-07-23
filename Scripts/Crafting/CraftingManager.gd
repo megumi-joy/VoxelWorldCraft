@@ -5,24 +5,49 @@ class_name CraftingManager
 # { "input": [{id: int, count: int}, ...], "output": {id: int, count: int} }
 var recipes = []
 
+# Explicit 3x3 crafting-grid layouts (Minecraft-style shaped recipes) for the
+# handful of recipes that have a recognizable real-Minecraft shape, keyed by
+# index into `recipes` (filled in right after the matching recipes.append()
+# below so the two stay in sync). Each value is a 9-entry Array, row-major
+# (index 0 = top-left, 8 = bottom-right), item id per cell or 0 for empty.
+# Anything not in this dict falls back to a generic top-left fill computed
+# from that recipe's "input" list -- see shape_for() below. Purely a UI/visual
+# concern: can_craft()/craft() still only look at "input", never at this.
+var recipe_shapes = {}
+
 func _ready():
 	# Wood -> 4 Planks
 	recipes.append({
 		"input": [{"id": 4, "count": 1}],
 		"output": {"id": 13, "count": 4}
 	})
-	
+	recipe_shapes[recipes.size() - 1] = [
+		0, 0, 0,
+		0, 4, 0,
+		0, 0, 0,
+	]
+
 	# 4 Planks -> Crafting Table
 	recipes.append({
 		"input": [{"id": 13, "count": 4}],
 		"output": {"id": 9, "count": 1}
 	})
-	
+	recipe_shapes[recipes.size() - 1] = [
+		13, 13, 0,
+		13, 13, 0,
+		0, 0, 0,
+	]
+
 	# Wheat -> Bread
 	recipes.append({
 		"input": [{"id": 21, "count": 3}],
 		"output": {"id": 22, "count": 1}
 	})
+	recipe_shapes[recipes.size() - 1] = [
+		21, 21, 21,
+		0, 0, 0,
+		0, 0, 0,
+	]
 	
 	# Planks -> Wooden Tools (pickaxe/shovel/axe/hoe/sword)
 	# (Simplified: 2 Planks for any tool for now)
@@ -55,6 +80,11 @@ func _ready():
 		"input": [{"id": 13, "count": 2}],
 		"output": {"id": 23, "count": 4}
 	})
+	recipe_shapes[recipes.size() - 1] = [
+		0, 13, 0,
+		0, 13, 0,
+		0, 0, 0,
+	]
 
 	# 2 Iron Ingot + 1 Sticks -> Iron Sword. Item 12 (Iron Sword) existed in
 	# ItemDatabase.gd with no recipe anywhere -- gives Iron Ingot (63) an
@@ -63,6 +93,11 @@ func _ready():
 		"input": [{"id": 63, "count": 2}, {"id": 23, "count": 1}],
 		"output": {"id": 12, "count": 1}
 	})
+	recipe_shapes[recipes.size() - 1] = [
+		0, 63, 0,
+		0, 63, 0,
+		0, 23, 0,
+	]
 
 	# 3 Iron Ingot -> Bucket (Empty, 67). Ties the bucket to the iron chain
 	# above, as asked.
@@ -79,6 +114,31 @@ func _ready():
 		"input": [{"id": 23, "count": 1}, {"id": 5, "count": 1}],
 		"output": {"id": 56, "count": 4}
 	})
+
+## 3x3 crafting-grid layout for CraftingUI.gd's grid preview: a 9-entry
+## Array (row-major, 0 = empty cell) of item ids. Returns the hand-authored
+## Minecraft-like shape from `recipe_shapes` when one exists; otherwise
+## auto-fills cells left-to-right/top-to-bottom from `recipe.input` (one cell
+## per unit of count, extra units beyond 9 total are simply not shown -- no
+## current recipe needs more than 9). Purely a display helper: can_craft()/
+## craft() above never consult this, so a missing/wrong shape can't affect
+## whether crafting actually works.
+func shape_for(recipe_index: int) -> Array:
+	if recipe_shapes.has(recipe_index):
+		return recipe_shapes[recipe_index]
+	if recipe_index < 0 or recipe_index >= recipes.size():
+		return []
+
+	var cells = []
+	cells.resize(9)
+	for i in range(9): cells[i] = 0
+	var idx = 0
+	for req in recipes[recipe_index].input:
+		for _n in range(req.count):
+			if idx >= 9: break
+			cells[idx] = req.id
+			idx += 1
+	return cells
 
 func can_craft(recipe_index: int, inventory: Node) -> bool:
 	if recipe_index < 0 or recipe_index >= recipes.size(): return false

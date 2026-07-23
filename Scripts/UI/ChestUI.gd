@@ -10,10 +10,45 @@ extends Control
 var chest # : ChestBlock (loose typing, same convention as FurnaceUI's `furnace`)
 var player_inventory # : Inventory
 
+@onready var chest_label = $Panel/ChestLabel
+@onready var inv_label = $Panel/InvLabel
 @onready var chest_grid = $Panel/ChestGrid
 @onready var inv_grid = $Panel/InventoryGrid
 
 const SLOT_SIZE := 56.0
+
+# Minecraft-style chrome, same palette as InventoryUI.gd/FurnaceUI.gd --
+# opaque dark panel + light border, cream slot squares, so all menus read as
+# one consistent set instead of the previous half-transparent look.
+const COL_PANEL_BG := Color(0.10, 0.07, 0.05, 1.0)
+const COL_PANEL_BORDER := Color(0.85, 0.78, 0.62, 0.95)
+const COL_SLOT_BG := Color(1.0, 0.97, 0.88, 0.92)
+const COL_SLOT_BORDER := Color(0.16, 0.09, 0.04, 0.9)
+
+func _ready():
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = COL_PANEL_BG
+	panel_style.set_corner_radius_all(10)
+	panel_style.set_border_width_all(4)
+	panel_style.border_color = COL_PANEL_BORDER
+	panel_style.shadow_color = Color(0, 0, 0, 0.4)
+	panel_style.shadow_size = 12
+	$Panel.add_theme_stylebox_override("panel", panel_style)
+
+	if chest_label:
+		chest_label.add_theme_font_size_override("font_size", 20)
+		chest_label.add_theme_color_override("font_color", COL_PANEL_BORDER)
+	if inv_label:
+		inv_label.add_theme_font_size_override("font_size", 18)
+
+func _style_slot(button: Button) -> void:
+	var style := StyleBoxFlat.new()
+	style.set_corner_radius_all(8)
+	style.set_border_width_all(3)
+	style.bg_color = COL_SLOT_BG
+	style.border_color = COL_SLOT_BORDER
+	for state in ["normal", "hover", "pressed", "focus"]:
+		button.add_theme_stylebox_override(state, style)
 
 func set_chest(c):
 	if chest and chest.chest_updated.is_connected(update_ui):
@@ -48,7 +83,7 @@ func _rebuild_grid(grid: GridContainer, items: Array, size: int, callback: Calla
 	for i in range(size):
 		var btn = Button.new()
 		btn.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
-		ItemIcon.apply_slot_style(btn)
+		_style_slot(btn)
 
 		var item = items[i]
 		var item_data = db.get_item(item.id) if (item and db) else null
