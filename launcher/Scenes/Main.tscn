@@ -229,7 +229,7 @@ theme_override_styles/normal = SubResource("sb_play_normal")
 theme_override_styles/hover = SubResource("sb_play_hover")
 theme_override_styles/pressed = SubResource("sb_play_pressed")
 theme_override_styles/disabled = SubResource("sb_play_disabled")
-text = "🎮 Играть"
+text = "Играть"
 
 [node name="UpdateButton" type="Button" parent="CenterContainer/Card/VBox/ButtonsRow"]
 custom_minimum_size = Vector2(150, 64)
@@ -240,7 +240,7 @@ theme_override_styles/normal = SubResource("sb_update_normal")
 theme_override_styles/hover = SubResource("sb_update_hover")
 theme_override_styles/pressed = SubResource("sb_update_pressed")
 theme_override_styles/disabled = SubResource("sb_update_disabled")
-text = "⬇ Обновить"
+text = "Обновить"
 
 [node name="SettingsButton" type="Button" parent="CenterContainer/Card/VBox"]
 custom_minimum_size = Vector2(0, 36)
@@ -249,7 +249,7 @@ theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.15, 0.25, 0.35, 1)
 theme_override_styles/normal = SubResource("sb_settings_normal")
 theme_override_styles/hover = SubResource("sb_settings_hover")
-text = "⚙ Настройки"
+text = "Настройки"
 
 [node name="SettingsPopup" type="PopupPanel" parent="."]
 size = Vector2i(420, 240)
@@ -282,7 +282,7 @@ size_flags_horizontal = 3
 [node name="InstallDirBrowseButton" type="Button" parent="SettingsPopup/SettingsVBox/InstallDirRow"]
 custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
-text = "📁"
+text = "..."
 
 [node name="SourceDirLabel" type="Label" parent="SettingsPopup/SettingsVBox"]
 layout_mode = 2
@@ -299,7 +299,7 @@ size_flags_horizontal = 3
 [node name="SourceDirBrowseButton" type="Button" parent="SettingsPopup/SettingsVBox/SourceDirRow"]
 custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
-text = "📁"
+text = "..."
 
 [node name="SettingsButtonsRow" type="HBoxContainer" parent="SettingsPopup/SettingsVBox"]
 layout_mode = 2

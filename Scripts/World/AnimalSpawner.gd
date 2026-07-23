@@ -1,10 +1,13 @@
 extends Node
-## Spawns a few passive Sheep on grass during daytime. A separate, self
-## contained node rather than an extra branch inside MobSpawner.gd -- see
-## that file's try_spawn_mob() for the hostile-mob equivalent, which this
-## mirrors structurally (spawn/cull pattern, node_paths wiring) without
-## touching it: no chase/attack state, no night-time branch, own species
-## cap, own group ("animals", not "mobs").
+## Spawns a few passive animals -- Sheep, Pig, Cow -- on grass during
+## daytime, picking a random species from ANIMAL_SCENE_PATHS each spawn (see
+## try_spawn_animal()/_pick_animal_scene()). A separate, self contained node
+## rather than an extra branch inside MobSpawner.gd -- see that file's
+## try_spawn_mob() for the hostile-mob equivalent, which this mirrors
+## structurally (spawn/cull pattern, node_paths wiring) without touching it:
+## no chase/attack state, no night-time branch, own species cap (shared
+## across all three animal types, not per-species), own group ("animals",
+## not "mobs").
 ##
 ## Day/night gating deliberately reads time_cycle.sun.light_energy (0.0
 ## night / 1.0 day, set directly by TimeCycle._process) rather than
@@ -29,6 +32,17 @@ extends Node
 
 const GRASS_BLOCK_ID = 2
 const SHEEP_SCENE_PATH = "res://Scenes/Sheep.tscn"
+
+# Species pool for the random pick in _pick_animal_scene(). Takes priority
+# over the single `animal_scene` export above (which World.tscn still wires
+# to Sheep.tscn for backward compatibility / as the last-resort fallback if
+# a pool entry fails to load) so the world actually gets a mix of animals
+# rather than only ever Sheep.
+const ANIMAL_SCENE_PATHS = [
+	"res://Scenes/Sheep.tscn",
+	"res://Scenes/Pig.tscn",
+	"res://Scenes/Cow.tscn",
+]
 
 var timer: float = 0.0
 
@@ -66,16 +80,26 @@ func try_spawn_animal():
 	if grass_y < 0:
 		return # No confirmed grass here (or chunk not loaded yet) -- try again next tick.
 
-	var scene = animal_scene if animal_scene else load(SHEEP_SCENE_PATH)
+	var scene = _pick_animal_scene()
 	if not scene:
 		return
-	var sheep = scene.instantiate()
+	var animal = scene.instantiate()
 	# Drop from a couple blocks up and let gravity settle it onto the
 	# surface, same approach MobSpawner uses for Mob/Villager -- avoids
 	# needing to know the collision shape's exact rest offset.
-	sheep.position = Vector3(x + 0.5, grass_y + 2.0, z + 0.5)
-	sheep.name = "Sheep_" + str(randi())
-	add_child(sheep, true)
+	animal.position = Vector3(x + 0.5, grass_y + 2.0, z + 0.5)
+	animal.name = "Animal_" + str(randi())
+	add_child(animal, true)
+
+## Random species pick for this spawn. Prefers the ANIMAL_SCENE_PATHS pool
+## (Sheep/Pig/Cow) so the world gets a mix; falls back to the single
+## `animal_scene` export (or Sheep.tscn directly) only if a pool load fails.
+func _pick_animal_scene() -> PackedScene:
+	var path: String = ANIMAL_SCENE_PATHS.pick_random()
+	var scene = load(path)
+	if scene:
+		return scene
+	return animal_scene if animal_scene else load(SHEEP_SCENE_PATH)
 
 ## Scans a small window around the terrain-noise height estimate (same
 ## formula MobSpawner/Chunk use for surface height) for the actual topmost

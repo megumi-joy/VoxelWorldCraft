@@ -27,6 +27,12 @@ var stuck_timer: float = 0.0
 var last_position: Vector3
 
 func _ready():
+	# MobSpawner.try_spawn_mob() caps spawns by checking
+	# get_tree().get_nodes_in_group("mobs").size() -- this was previously
+	# never populated (Mob.gd never joined the group), so that cap was
+	# silently a no-op. Joining it here makes the existing cap logic
+	# actually count hostiles, matching Sheep.gd's "animals" group pattern.
+	add_to_group("mobs")
 	health = max_health
 	setup_raycast()
 

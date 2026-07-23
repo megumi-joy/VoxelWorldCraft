@@ -18,55 +18,55 @@ var item_to_species: Dictionary = {}  # trigger item id -> species_key
 
 func _ready() -> void:
 	# --- Plants ---------------------------------------------------------
-	_register("berry_bush", Category.PLANT, "Berry Bush", 70, {
-		"Family": "Rosaceae (rose family)",
-		"Habitat": "Forest & Plains undergrowth, sun-dappled edges",
-		"Edible?": "Yes -- the berries restore Hunger when eaten",
-		"Note": "The fruit is harvested by breaking the bush; wild bushes like this one are the ancestors of most cultivated berry crops.",
+	_register("berry_bush", Category.PLANT, "Ягодный куст", 70, {
+		"Семейство": "Розовые (Rosaceae)",
+		"Среда обитания": "Подлесок лесов и равнин, солнечные опушки",
+		"Съедобно?": "Да -- ягоды восстанавливают голод при употреблении",
+		"Заметка": "Плоды собирают, ломая куст; такие дикие кусты -- предки большинства культурных ягодных культур.",
 	})
-	_register("flower_blue", Category.PLANT, "Blue Flower", 53, {
-		"Family": "Campanulaceae (bellflower family)",
-		"Habitat": "Forest floor, scattered among grass",
-		"Edible?": "No -- ornamental only",
-		"Note": "Its blue pigment is anthocyanin, the same pigment class that colors blueberries and red cabbage.",
+	_register("flower_blue", Category.PLANT, "Синий цветок", 53, {
+		"Семейство": "Колокольчиковые (Campanulaceae)",
+		"Среда обитания": "Лесная подстилка, среди травы",
+		"Съедобно?": "Нет -- только декоративный",
+		"Заметка": "Синий пигмент -- антоциан, тот же класс пигментов, что окрашивает чернику и краснокочанную капусту.",
 	})
-	_register("flower_pink", Category.PLANT, "Pink Flower", 54, {
-		"Family": "Caryophyllaceae (pink family)",
-		"Habitat": "Forest floor, scattered among grass",
-		"Edible?": "No -- ornamental only",
-		"Note": "The family Caryophyllaceae is literally nicknamed 'the pinks' after this color.",
+	_register("flower_pink", Category.PLANT, "Розовый цветок", 54, {
+		"Семейство": "Гвоздичные (Caryophyllaceae)",
+		"Среда обитания": "Лесная подстилка, среди травы",
+		"Съедобно?": "Нет -- только декоративный",
+		"Заметка": "Семейство Caryophyllaceae в народе называют «гвоздичными» именно за этот цвет.",
 	})
 
 	# --- Minerals ---------------------------------------------------------
-	_register("copper_ore", Category.MINERAL, "Copper Ore", 80, {
-		"Category": "Native element / sulfide ore",
-		"Mohs hardness": "2.5 - 3",
-		"Common use": "Electrical wiring, plumbing, alloys (bronze, brass)",
-		"Note": "One of the first metals humans ever worked -- the Copper Age predates the Bronze Age.",
+	_register("copper_ore", Category.MINERAL, "Медная руда", 80, {
+		"Категория": "Самородный элемент / сульфидная руда",
+		"Твёрдость по Моосу": "2.5 - 3",
+		"Применение": "Электропроводка, сантехника, сплавы (бронза, латунь)",
+		"Заметка": "Один из первых металлов, освоенных человеком -- медный век предшествовал бронзовому.",
 	})
-	_register("gold_ore", Category.MINERAL, "Gold Ore", 81, {
-		"Category": "Native element",
-		"Mohs hardness": "2.5 - 3",
-		"Common use": "Jewelry, electronics contacts, currency reserves",
-		"Note": "So unreactive it occurs in nature as pure metal nuggets, without needing to be smelted from a compound.",
+	_register("gold_ore", Category.MINERAL, "Золотая руда", 81, {
+		"Категория": "Самородный элемент",
+		"Твёрдость по Моосу": "2.5 - 3",
+		"Применение": "Ювелирные изделия, контакты в электронике, валютные резервы",
+		"Заметка": "Настолько инертно, что встречается в природе в виде чистых самородков, без выплавки из соединений.",
 	})
-	_register("quartz", Category.MINERAL, "Quartz", 82, {
-		"Category": "Silicate mineral (SiO2)",
-		"Mohs hardness": "7",
-		"Common use": "Glassmaking, electronics oscillators, ornamental stone",
-		"Note": "Hard enough to scratch steel -- it's the reference mineral for '7' on the Mohs hardness scale.",
+	_register("quartz", Category.MINERAL, "Кварц", 82, {
+		"Категория": "Силикатный минерал (SiO2)",
+		"Твёрдость по Моосу": "7",
+		"Применение": "Производство стекла, кварцевые генераторы в электронике, декоративный камень",
+		"Заметка": "Достаточно твёрд, чтобы царапать сталь -- эталонный минерал для отметки «7» по шкале твёрдости Мооса.",
 	})
-	_register("hematite", Category.MINERAL, "Hematite", 83, {
-		"Category": "Iron oxide mineral (Fe2O3)",
-		"Mohs hardness": "5.5 - 6.5",
-		"Common use": "Primary iron ore, red pigment (ochre)",
-		"Note": "The same iron oxide that colors Mars red also colors this mineral and rusting iron on Earth.",
+	_register("hematite", Category.MINERAL, "Гематит", 83, {
+		"Категория": "Минерал оксида железа (Fe2O3)",
+		"Твёрдость по Моосу": "5.5 - 6.5",
+		"Применение": "Основная железная руда, красный пигмент (охра)",
+		"Заметка": "Тот же оксид железа, что окрашивает Марс в красный цвет, окрашивает и этот минерал, и ржавеющее железо на Земле.",
 	})
-	_register("malachite_ore", Category.MINERAL, "Malachite Ore", 84, {
-		"Category": "Copper carbonate mineral",
-		"Mohs hardness": "3.5 - 4",
-		"Common use": "Copper ore, green pigment, ornamental carving",
-		"Note": "Its banded green pattern forms where copper deposits weather near the surface.",
+	_register("malachite_ore", Category.MINERAL, "Малахитовая руда", 84, {
+		"Категория": "Минерал карбоната меди",
+		"Твёрдость по Моосу": "3.5 - 4",
+		"Применение": "Медная руда, зелёный пигмент, декоративная резьба",
+		"Заметка": "Полосчатый зелёный узор образуется там, где медные залежи выветриваются у поверхности.",
 	})
 
 func _register(key: String, category: int, display_name: String, trigger_item_id: int, facts: Dictionary) -> void:

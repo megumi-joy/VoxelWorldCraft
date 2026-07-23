@@ -55,24 +55,24 @@ func _process(_delta: float) -> void:
 		return
 	var p := get_tree().get_first_node_in_group("player")
 	var lines := PackedStringArray()
-	lines.append("VoxelWorldCraft -- DEBUG (F3)")
+	lines.append("VoxelWorldCraft -- ОТЛАДКА (F3)")
 	lines.append("FPS: %d" % Engine.get_frames_per_second())
 	if p == null:
-		lines.append("player: (not spawned)")
+		lines.append("игрок: (не заспавнен)")
 		_label.text = "\n".join(lines)
 		return
 
 	var pos: Vector3 = p.global_position
 	lines.append("XYZ: %.2f / %.2f / %.2f" % [pos.x, pos.y, pos.z])
-	lines.append("Block: %d %d %d" % [floori(pos.x), floori(pos.y), floori(pos.z)])
-	lines.append("Chunk: %d, %d" % [floori(pos.x / CHUNK_SIZE), floori(pos.z / CHUNK_SIZE)])
-	lines.append("Facing: %s" % _facing(p))
+	lines.append("Блок: %d %d %d" % [floori(pos.x), floori(pos.y), floori(pos.z)])
+	lines.append("Чанк: %d, %d" % [floori(pos.x / CHUNK_SIZE), floori(pos.z / CHUNK_SIZE)])
+	lines.append("Направление: %s" % _facing(p))
 	if p.has_method("is_on_floor"):
-		lines.append("on_floor: %s   vel.y: %.1f" % [str(p.is_on_floor()), p.velocity.y if ("velocity" in p) else 0.0])
+		lines.append("на земле: %s   скор.y: %.1f" % [str(p.is_on_floor()), p.velocity.y if ("velocity" in p) else 0.0])
 	if "selected_block_id" in p:
 		var item = ItemDatabase.get_item(p.selected_block_id) if get_node_or_null("/root/ItemDatabase") else null
-		lines.append("Held: %s (id %d)" % [item.name if item else "-", p.selected_block_id])
-	lines.append("Looking at: %s" % _looking_at(p))
+		lines.append("В руке: %s (id %d)" % [item.name if item else "-", p.selected_block_id])
+	lines.append("Смотрит на: %s" % _looking_at(p))
 	_label.text = "\n".join(lines)
 
 ## Compass from the camera's world-space forward vector (Minecraft convention:
@@ -83,8 +83,8 @@ func _facing(p) -> String:
 		return "?"
 	var f: Vector3 = -cam.global_transform.basis.z
 	if abs(f.z) >= abs(f.x):
-		return "North (-Z)" if f.z < 0.0 else "South (+Z)"
-	return "East (+X)" if f.x > 0.0 else "West (-X)"
+		return "Север (-Z)" if f.z < 0.0 else "Юг (+Z)"
+	return "Восток (+X)" if f.x > 0.0 else "Запад (-X)"
 
 ## The block cell the player's aim raycast currently hits, if any.
 func _looking_at(p) -> String:

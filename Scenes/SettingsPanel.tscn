@@ -52,7 +52,7 @@ theme_override_constants/separation = 14
 [node name="TitleLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox"]
 layout_mode = 2
 horizontal_alignment = 1
-text = "SETTINGS"
+text = "НАСТРОЙКИ"
 
 [node name="ScrollContainer" type="ScrollContainer" parent="DimBackground/PanelBox/Margin/VBox"]
 custom_minimum_size = Vector2(460, 350)
@@ -72,7 +72,7 @@ theme_override_constants/separation = 12
 [node name="HudSizeLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox/HudSizeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "HUD Size"
+text = "Размер HUD"
 
 [node name="ValueLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox/HudSizeRow"]
 layout_mode = 2
@@ -94,7 +94,7 @@ layout_mode = 2
 [node name="GraphicsTitleLabel" type="Label" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
 layout_mode = 2
 horizontal_alignment = 1
-text = "GRAPHICS QUALITY"
+text = "КАЧЕСТВО ГРАФИКИ"
 
 [node name="GraphicsSection" type="VBoxContainer" parent="DimBackground/PanelBox/Margin/VBox/ScrollContainer/ContentVBox"]
 layout_mode = 2
@@ -104,4 +104,4 @@ theme_override_constants/separation = 14
 custom_minimum_size = Vector2(140, 52)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "CLOSE"
+text = "ЗАКРЫТЬ"

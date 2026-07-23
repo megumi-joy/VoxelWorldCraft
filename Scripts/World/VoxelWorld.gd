@@ -92,7 +92,11 @@ func _ready():
 	# on headless) is byte-identical to what gets rendered on 182 -- FastNoiseLite
 	# is deterministic across platforms. Inert flag, same convention as the demo
 	# drivers; never affects normal play.
-	if OS.get_cmdline_user_args().has("--showcase-demo"):
+	# --world-content-demo (Scripts/Testing/WorldContentDemoDriver.gd) shares
+	# the same pinned seed as --showcase-demo: reproducible terrain so ore/
+	# biome/structure counts can be tuned against a known-fixed world instead
+	# of a fresh-random one every run.
+	if OS.get_cmdline_user_args().has("--showcase-demo") or OS.get_cmdline_user_args().has("--world-content-demo"):
 		noise.seed = 424242
 	else:
 		var saved_seed = SaveSystem.load_world_seed()
@@ -266,6 +270,8 @@ func set_voxel(global_pos: Vector3, type: int):
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/BedBlock.tscn")
 	elif type == 56: # Torch (light source; see TorchBlock.gd)
 		spawn_block_entity(pos_i, "res://Scenes/Blocks/TorchBlock.tscn")
+	elif type == 73: # Storage Chest (see ChestBlock.gd)
+		spawn_block_entity(pos_i, "res://Scenes/Blocks/ChestBlock.tscn")
 
 	if chunks.has(chunk_pos) and chunks[chunk_pos] != null:
 		var chunk = chunks[chunk_pos]

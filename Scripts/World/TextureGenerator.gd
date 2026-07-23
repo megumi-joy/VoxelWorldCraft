@@ -23,7 +23,11 @@ func _ready():
 	generate_texture(image, 3, 0, Color(0.2, 0.2, 0.2), 0.5) # Bedrock?
 	generate_texture(image, 4, 0, Color(0.4, 0.25, 0.1), 0.1) # ID 4: Oak Wood
 	add_lines(image, 4, 0, Color(0.3, 0.2, 0.05))
-	
+	# Storage Chest (ID 73) -- a plank-like crate face with a darker
+	# horizontal banding so it reads as a chest instead of plain wood.
+	generate_texture(image, 5, 0, Color(0.5, 0.32, 0.14), 0.1)
+	add_lines(image, 5, 0, Color(0.25, 0.15, 0.05))
+
 	# --- Row 1: Ores & Resources ---
 	# Coal (ID 5)
 	generate_texture(image, 0, 1, Color(0.5, 0.5, 0.5), 0.1)
@@ -38,6 +42,16 @@ func _ready():
 	generate_texture(image, 3, 1, Color(0.3, 0.2, 0.1), 0.2)
 	# Wheat Stage 0-3 (Reuse logic or placeholders)
 	# ...
+
+	# Clay (ID 96, new shallow ORE_TABLE entry -- see Chunk.gd): muted
+	# grey-brown wet sediment.
+	generate_texture(image, 4, 1, Color(0.55, 0.5, 0.45), 0.1)
+	# Glass (ID 97, smelted from Sand): pale, low-noise so it reads as
+	# smooth/reflective rather than a rough natural block.
+	generate_texture(image, 5, 1, Color(0.75, 0.9, 0.95), 0.05)
+	# Brick (ID 98, smelted from Clay): red-brown fired clay + mortar lines.
+	generate_texture(image, 6, 1, Color(0.55, 0.25, 0.2), 0.1)
+	add_lines(image, 6, 1, Color(0.75, 0.75, 0.7))
 	
 	# --- Row 2: Nature (Biomes) ---
 	# Snow (ID 43)

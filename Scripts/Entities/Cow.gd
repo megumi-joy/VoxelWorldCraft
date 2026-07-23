@@ -1,24 +1,19 @@
 extends CharacterBody3D
-class_name Sheep
+class_name Cow
 
-# First passive fauna (naturalist direction). Structurally mirrors
-# Mob.gd/Villager.gd's IDLE/WANDER state machine (no NavigationAgent3D --
-# the world has no navmesh; neither hostile Mob nor Villager use one
-# either, they just move+turn with a forward RayCast3D + auto-jump) but is
-# never hostile: no detection_range, no target_player chase/attack. The
-# only reaction to the player is FLEE, entered on take_damage().
+# Third passive fauna (creatures/mobs batch), added alongside Pig.gd.
+# Same IDLE/WANDER/FLEE scaffolding as Sheep.gd/Pig.gd; the only real
+# difference is the drop table -- Cow drops both Raw Meat and Leather
+# (a new raw-resource item, see ItemDatabase.gd ID 99), both guaranteed
+# (not randf()-gated), matching Sheep's "always drop something" contract.
 
-const SPEED = 2.0
-const FLEE_SPEED_MULT = 2.2
+const SPEED = 1.8 # Cows are a touch slower/heavier than Sheep/Pig
+const FLEE_SPEED_MULT = 2.0
 const JUMP_VELOCITY = 4.5
 const GRAVITY = 9.8
 
-const WOOL_ITEM_ID = 71
-const MUTTON_ITEM_ID = 72
-# Raw Meat (94, see ItemDatabase.gd) -- edible as-is for a little nutrition,
-# or smelted in a Furnace into Cooked Meat (95) for a lot more. Additive
-# drop chance alongside the existing Wool/Mutton, not a replacement.
 const RAW_MEAT_ITEM_ID = 94
+const LEATHER_ITEM_ID = 99
 
 enum State { IDLE, WANDER, FLEE }
 var current_state = State.IDLE
@@ -27,14 +22,13 @@ var move_timer = 0.0
 var move_direction = Vector3.ZERO
 var target_rotation_y = 0.0
 
-@export var max_health: float = 8.0
+@export var max_health: float = 12.0
 @export var flee_duration: float = 3.0
 
 var health: float
 var flee_timer: float = 0.0
 var last_attacker: Node3D = null
 
-# Obstacle-avoidance raycast + stuck detection, same shape as Mob.gd.
 var wall_ray: RayCast3D
 var stuck_timer: float = 0.0
 var last_position: Vector3
@@ -50,11 +44,11 @@ func setup_raycast():
 	wall_ray.name = "WallRay"
 	wall_ray.target_position = Vector3(0, 0, -1.0)
 	wall_ray.enabled = true
-	wall_ray.position.y = 0.35 # Sheep are short -- chest height, lower than Mob's 0.5
+	wall_ray.position.y = 0.55 # Cows are the tallest of the three -- chest height
 	add_child(wall_ray)
 
-## Called by Player.gd's melee hit (`collider.take_damage(dmg)`, single arg
-## -- see manual_interaction_check()). Never retaliates: just flees.
+## Called by Player.gd's melee hit (`collider.take_damage(dmg)`, single arg).
+## Never retaliates: just flees, same contract as Sheep.gd/Pig.gd.
 func take_damage(amount: float, _cause: String = ""):
 	health -= amount
 	if health <= 0:
@@ -74,10 +68,7 @@ func take_damage(amount: float, _cause: String = ""):
 	current_state = State.FLEE
 	flee_timer = flee_duration
 
-## Direct-to-inventory drop, matching the rest of the codebase (there is no
-## physical item-pickup entity anywhere -- Player.gd's block mining does
-## `inventory.add_item(...)` straight into the harvesting player's
-## inventory; this does the same for whichever player last hit the sheep).
+## Direct-to-inventory drop, same pattern as Sheep.gd/Pig.gd's die().
 func die():
 	var target = last_attacker
 	if not is_instance_valid(target):
@@ -85,11 +76,8 @@ func die():
 	if target:
 		var inv = target.get_node_or_null("Inventory")
 		if inv:
-			inv.add_item(WOOL_ITEM_ID, randi_range(1, 2))
-			if randf() < 0.5:
-				inv.add_item(MUTTON_ITEM_ID, 1)
-			if randf() < 0.4:
-				inv.add_item(RAW_MEAT_ITEM_ID, 1)
+			inv.add_item(RAW_MEAT_ITEM_ID, randi_range(1, 2))
+			inv.add_item(LEATHER_ITEM_ID, randi_range(1, 2))
 	queue_free()
 
 func _process(delta):
@@ -123,8 +111,6 @@ func check_stuck(delta):
 			if current_state == State.WANDER:
 				pick_random_state()
 			elif current_state == State.FLEE:
-				# Stuck mid-flee (cornered) -- jump and pick a fresh
-				# direction rather than pressing uselessly into a wall.
 				velocity.y = JUMP_VELOCITY
 				var angle = randf() * PI * 2
 				move_direction = Vector3(sin(angle), 0, cos(angle))

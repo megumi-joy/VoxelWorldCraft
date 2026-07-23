@@ -285,4 +285,8 @@ func _item_color(item_data) -> Color:
 		82: return Color(0.88, 0.88, 0.92) # Quartz
 		83: return Color(0.55, 0.2, 0.15) # Hematite
 		84: return Color(0.1, 0.55, 0.25) # Malachite Ore
+		73: return Color(0.5, 0.32, 0.14) # Storage Chest
+		96: return Color(0.55, 0.5, 0.45) # Clay
+		97: return Color(0.75, 0.9, 0.95) # Glass
+		98: return Color(0.55, 0.25, 0.2) # Brick
 		_: return Color(0.65, 0.45, 0.85) # fallback (misc)

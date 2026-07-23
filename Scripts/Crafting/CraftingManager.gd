@@ -24,11 +24,29 @@ func _ready():
 		"output": {"id": 22, "count": 1}
 	})
 	
-	# Planks -> Wooden Tools
+	# Planks -> Wooden Tools (pickaxe/shovel/axe/hoe/sword)
 	# (Simplified: 2 Planks for any tool for now)
-	for tid in [30, 31, 32, 33]:
+	for tid in [30, 31, 32, 33, 86]:
 		recipes.append({
 			"input": [{"id": 13, "count": 2}],
+			"output": {"id": tid, "count": 1}
+		})
+
+	# Stone -> Stone Tools (pickaxe/shovel/axe/sword, IDs 87-90 -- see
+	# ItemDatabase.gd). Same "2 [material] + 1 Stick" shape as the existing
+	# Iron Sword recipe below, one tier down in material.
+	for tid in [87, 88, 89, 90]:
+		recipes.append({
+			"input": [{"id": 3, "count": 2}, {"id": 23, "count": 1}],
+			"output": {"id": tid, "count": 1}
+		})
+
+	# Iron Ingot -> Iron Tools (pickaxe/shovel/axe, IDs 91-93). Iron Sword
+	# (12) already has its own recipe below -- this covers the rest of the
+	# iron tier.
+	for tid in [91, 92, 93]:
+		recipes.append({
+			"input": [{"id": 63, "count": 2}, {"id": 23, "count": 1}],
 			"output": {"id": tid, "count": 1}
 		})
 
@@ -51,6 +69,15 @@ func _ready():
 	recipes.append({
 		"input": [{"id": 63, "count": 3}],
 		"output": {"id": 67, "count": 1}
+	})
+
+	# 1 Sticks + 1 Coal Ore -> 4 Torches. Torch (56, see ItemDatabase.gd) was
+	# only ever placeable via the hotbar with no crafting path -- this gives
+	# it one, using items that already exist (Sticks from the plank recipe
+	# above, Coal Ore already minable/collectible).
+	recipes.append({
+		"input": [{"id": 23, "count": 1}, {"id": 5, "count": 1}],
+		"output": {"id": 56, "count": 4}
 	})
 
 func can_craft(recipe_index: int, inventory: Node) -> bool:

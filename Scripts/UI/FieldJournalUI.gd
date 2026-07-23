@@ -85,11 +85,11 @@ func refresh() -> void:
 
 	var stats = _find_stats()
 
-	_add_category_header(plants_vbox, "PLANTS", COL_HEADER_PLANT)
+	_add_category_header(plants_vbox, "РАСТЕНИЯ", COL_HEADER_PLANT)
 	for entry in CodexDatabase.get_entries_by_category(CodexDatabase.Category.PLANT):
 		_add_entry_card(plants_vbox, entry, stats)
 
-	_add_category_header(minerals_vbox, "MINERALS", COL_HEADER_MINERAL)
+	_add_category_header(minerals_vbox, "МИНЕРАЛЫ", COL_HEADER_MINERAL)
 	for entry in CodexDatabase.get_entries_by_category(CodexDatabase.Category.MINERAL):
 		_add_entry_card(minerals_vbox, entry, stats)
 
@@ -169,10 +169,10 @@ func _add_entry_card(column: VBoxContainer, entry: Dictionary, stats) -> void:
 			fact_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			vbox.add_child(fact_label)
 	else:
-		name_label.text = "??? -- undiscovered"
+		name_label.text = "??? -- не открыто"
 		name_label.add_theme_color_override("font_color", COL_TEXT_LOCKED)
 		var hint = Label.new()
-		hint.text = "Find and collect one to identify it."
+		hint.text = "Найдите и соберите, чтобы определить."
 		hint.add_theme_font_size_override("font_size", 13)
 		hint.add_theme_color_override("font_color", COL_TEXT_LOCKED)
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

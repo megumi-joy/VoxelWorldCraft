@@ -72,6 +72,30 @@ var _camera_base_local_pos: Vector3 = Vector3.ZERO
 var _base_fov: float = 75.0
 var _smoothed_look_delta: Vector2 = Vector2.ZERO
 
+# Hand-swing (Task: digging animation) runtime state -- see
+# _update_hand_animation() below. Base position/rotation captured once in
+# _ready() so the swing always animates AROUND the hand's authored resting
+# pose (Scenes/Player.tscn) instead of hardcoding it here twice.
+var _hand_base_position: Vector3 = Vector3.ZERO
+var _hand_base_rotation: Vector3 = Vector3.ZERO
+var _hand_swing_time: float = 0.0
+
+# Block placement ghost preview + mining crack overlay (see
+# _update_placement_preview()/_update_mining_crack_overlay() below) -- both
+# are plain MeshInstance3Ds created lazily on first use and parented under
+# /root/World so they sit in world space untouched by the player's own
+# transform.
+var _placement_preview: MeshInstance3D = null
+var _crack_overlay: MeshInstance3D = null
+# Set by _process_mining() each frame mining is actually progressing on a
+# breakable block; cleared wherever mining is cancelled (LMB release, look-
+# away, target change, bedrock refusal) -- see manual_interaction_check()/
+# _process_mining() below. _update_mining_crack_overlay() only trusts this
+# flag, so it can never show a stale overlay after mining stops.
+var _mining_overlay_visible: bool = false
+var _mining_overlay_cell: Vector3i = Vector3i.ZERO
+var _mining_overlay_fraction: float = 0.0
+
 # Throttled "[Шаги]" (footsteps) sound-subtitle caption -- see
 # SoundCaptions.gd. Fires at most once per FOOTSTEP_CAPTION_INTERVAL while
 # actually walking/sprinting on the ground, not every physics frame (there's
@@ -118,11 +142,17 @@ const MOVEMENT_ACTIONS := ["move_forward", "move_backward", "move_left", "move_r
 # open/close (InventoryUI.gd, SettingsPanel.gd, ...). Used by _is_menu_open()
 # so the click-to-recapture and focus-in-recapture logic below never yanks
 # the cursor back while one of these is actually open.
-const MENU_PANEL_NAMES := ["InventoryUI", "CraftingUI", "FurnaceUI", "TradingUI", "SettingsPanel", "FieldJournalUI"]
+const MENU_PANEL_NAMES := ["InventoryUI", "CraftingUI", "FurnaceUI", "TradingUI", "SettingsPanel", "FieldJournalUI", "ChestUI"]
 
 @onready var head = $Head
 @onready var camera = $Head/Camera3D
 @onready var raycast = $Head/Camera3D/RayCast3D
+# Camera-attached first-person hand (see Scenes/Player.tscn) -- animated by
+# _update_hand_animation() below while mining. May resolve to null in the
+# setup_nodes() fallback path before that fallback creates its own copy of
+# this same node (same name/parent path), same defensive convention as
+# collision_shape above.
+@onready var hand = get_node_or_null("Head/Camera3D/Hand")
 # The player's capsule collider. May resolve to null in the setup_nodes()
 # fallback path (that CollisionShape3D is created later than this @onready
 # resolves) -- callers null-check it defensively.
@@ -209,6 +239,10 @@ func _ready():
 		_camera_base_local_pos = camera.position
 		_base_fov = camera.fov
 
+	if hand:
+		_hand_base_position = hand.position
+		_hand_base_rotation = hand.rotation
+
 	# Connect Hotbar
 	if hotbar_ui:
 		hotbar_ui.on_slot_selected.connect(on_hotbar_select)
@@ -271,6 +305,18 @@ func setup_nodes():
 	var col = CollisionShape3D.new()
 	col.name = "CollisionShape3D"
 	var shape = CapsuleShape3D.new()
+	# Explicit radius/height, NOT CapsuleShape3D's own defaults (radius 0.5 ->
+	# diameter 1.0, exactly equal to a 1-block-wide gap -- physically cannot
+	# fit through a 1-wide corridor with zero clearance). Matches Scenes/
+	# Player.tscn's own capsule (radius 0.3) so a Player built through this
+	# fallback path (no scene, e.g. an isolated unit test) behaves the same
+	# as the real one for gap-width verification (see Scripts/Testing/
+	# NarrowGapDemoDriver.gd). This path only runs when Player is
+	# instantiated WITHOUT Player.tscn (see "if not head: setup_nodes()"
+	# above) -- the real game always spawns via Player.tscn (World.gd's
+	# spawn_player()), which never hits this fallback at all.
+	shape.radius = 0.3
+	shape.height = 1.8
 	col.shape = shape
 	add_child(col)
 	
@@ -333,12 +379,34 @@ func _unhandled_input(event):
 			apply_look_delta(event.relative)
 
 	if event.is_action_pressed("ui_cancel"): # Escape
-		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-			_manually_released_mouse = true
+		# The Escape pause menu (Scripts/Autoload/PauseMenu.gd) now owns plain
+		# Escape during normal play -- opens a paused Продолжить/Выход overlay
+		# instead of just releasing the mouse. Only fall back to the OLD
+		# release/recapture-mouse behavior while some other HUD panel
+		# (Inventory/Crafting/Furnace/...) is already open, so escaping out of
+		# THOSE still works exactly as it did before this feature existed
+		# (PauseMenu piling on top of an open panel would be a confusing
+		# double-overlay, and those panels already have their own
+		# open/close conventions this doesn't need to touch).
+		if _is_menu_open():
+			if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+				_manually_released_mouse = true
+			else:
+				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+				_manually_released_mouse = false
 		else:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			_manually_released_mouse = false
+			PauseMenu.toggle()
+			# Consume the event: PauseMenu is also an autoload with its own
+			# _unhandled_input (its Escape-to-resume shortcut, see
+			# PauseMenu.gd), and _unhandled_input dispatch order between an
+			# autoload and a deep scene node like Player is NOT guaranteed --
+			# without this, the SAME Escape press could reach PauseMenu's
+			# handler too, see _paused now true (toggle() just set it), and
+			# immediately resume() right back out, so the menu would appear
+			# to never open. Explicitly marking the event handled stops it
+			# from propagating any further this frame.
+			get_viewport().set_input_as_handled()
 		return
 
 	# Click back into the game re-captures the mouse after an Esc release.
@@ -436,6 +504,130 @@ func apply_look_delta(relative: Vector2) -> void:
 @export var ai_enabled: bool = false # Default to Manual
 var ai_target: Node3D = null
 var ai_timer: float = 0.0
+
+func _process(delta: float) -> void:
+	# Purely visual/feedback systems -- kept out of _physics_process so they
+	# stay smooth at whatever the display refresh rate is, independent of the
+	# physics tick. None of these touch movement/collision state.
+	_update_placement_preview()
+	_update_hand_animation(delta)
+	_update_mining_crack_overlay()
+
+## Block placement ghost preview (precision placement): a translucent 1x1x1
+## cube snapped to the exact cell a block would land in if the player
+## right-clicked right now, mirroring the real placement math in
+## manual_interaction_check()'s "4. Normal Block Placement" branch
+## (place_pos = point + normal*0.1) so the preview can never lie about where
+## the block will actually go. Hidden whenever there's no valid target: the
+## raycast isn't hitting anything, the selected item isn't a placeable BLOCK,
+## or the target cell overlaps the player's own body (placement would be
+## refused there anyway -- see _cell_overlaps_player()).
+func _update_placement_preview() -> void:
+	_ensure_placement_preview()
+	if not _placement_preview:
+		return
+	if not raycast or not raycast.is_colliding():
+		_placement_preview.visible = false
+		return
+	var item = ItemDatabase.get_item(selected_block_id)
+	if not item or item.type != 0: # ItemType.BLOCK
+		_placement_preview.visible = false
+		return
+	var point = raycast.get_collision_point()
+	var normal = raycast.get_collision_normal()
+	var place_pos = point + normal * 0.1
+	var cell := Vector3i(int(floor(place_pos.x)), int(floor(place_pos.y)), int(floor(place_pos.z)))
+	if _cell_overlaps_player(cell):
+		_placement_preview.visible = false
+		return
+	_placement_preview.global_position = Vector3(cell) + Vector3(0.5, 0.5, 0.5)
+	_placement_preview.visible = true
+
+func _ensure_placement_preview() -> void:
+	if _placement_preview:
+		return
+	var world = get_node_or_null("/root/World")
+	if not world:
+		return # Not in the real gameplay scene (e.g. an isolated test) -- no-op.
+	var mesh_instance = MeshInstance3D.new()
+	mesh_instance.name = "PlacementPreview"
+	var box = BoxMesh.new()
+	box.size = Vector3(1.02, 1.02, 1.02)
+	mesh_instance.mesh = box
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(1.0, 1.0, 1.0, 0.28)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh_instance.material_override = mat
+	mesh_instance.visible = false
+	world.add_child(mesh_instance)
+	_placement_preview = mesh_instance
+
+## Digging animation (hand swing): a continuous punch/swing motion on the
+## camera-attached Hand mesh (Scenes/Player.tscn) while LMB is held on a
+## valid mining target -- i.e. exactly the same "is mining active" read
+## manual_interaction_check()/_process_mining() use (mouse or mocked click +
+## raycast hit). Eases back to the authored resting pose the instant mining
+## stops, rather than snapping, so the hand never visibly teleports.
+func _update_hand_animation(delta: float) -> void:
+	if not hand:
+		return
+	var mining_active = (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or mock_left_click) \
+		and raycast and raycast.is_colliding()
+	if mining_active:
+		_hand_swing_time += delta * 9.0
+		var swing = sin(_hand_swing_time)
+		hand.position = _hand_base_position + Vector3(0.0, -0.06, -0.16) * absf(swing)
+		hand.rotation = _hand_base_rotation + Vector3(deg_to_rad(-25.0) * swing, 0.0, 0.0)
+	else:
+		_hand_swing_time = 0.0
+		var weight = clamp(delta * 10.0, 0.0, 1.0)
+		hand.position = hand.position.lerp(_hand_base_position, weight)
+		hand.rotation = hand.rotation.lerp(_hand_base_rotation, weight)
+
+## Block-crack progress overlay: a black quad-ish box growing over the block
+## currently being mined, scaling from barely visible to almost full-block
+## size as _mining_progress (see _process_mining()) approaches break_speed.
+## Purely a _mining_overlay_visible/_mining_overlay_cell/_mining_overlay_
+## fraction reader -- _process_mining() is the only writer, and clears the
+## flag on every cancel path, so this can never show stale progress on a
+## block that's no longer being mined.
+func _update_mining_crack_overlay() -> void:
+	_ensure_crack_overlay()
+	if not _crack_overlay:
+		return
+	if not _mining_overlay_visible:
+		_crack_overlay.visible = false
+		return
+	_crack_overlay.visible = true
+	_crack_overlay.global_position = Vector3(_mining_overlay_cell) + Vector3(0.5, 0.5, 0.5)
+	var s = lerp(0.25, 1.03, clamp(_mining_overlay_fraction, 0.0, 1.0))
+	_crack_overlay.scale = Vector3(s, s, s)
+	var mat: StandardMaterial3D = _crack_overlay.material_override
+	if mat:
+		mat.albedo_color.a = lerp(0.15, 0.65, clamp(_mining_overlay_fraction, 0.0, 1.0))
+
+func _ensure_crack_overlay() -> void:
+	if _crack_overlay:
+		return
+	var world = get_node_or_null("/root/World")
+	if not world:
+		return
+	var mesh_instance = MeshInstance3D.new()
+	mesh_instance.name = "MiningCrackOverlay"
+	var box = BoxMesh.new()
+	box.size = Vector3(1.0, 1.0, 1.0)
+	mesh_instance.mesh = box
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.0, 0.0, 0.0, 0.3)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh_instance.material_override = mat
+	mesh_instance.visible = false
+	world.add_child(mesh_instance)
+	_crack_overlay = mesh_instance
 
 func _physics_process(delta):
 	# --- Jump timers: coyote time (grace period to still jump shortly after
@@ -663,6 +855,7 @@ func manual_interaction_check(delta: float):
 		# in-progress single-block mining -- see _process_mining() below.
 		_mining_progress = 0.0
 		_mining_blocked = false
+		_mining_overlay_visible = false
 
 	if not left and not right: return
 
@@ -670,6 +863,7 @@ func manual_interaction_check(delta: float):
 		# Looking away from every block also cancels mining progress.
 		_mining_progress = 0.0
 		_mining_blocked = false
+		_mining_overlay_visible = false
 
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
@@ -689,6 +883,7 @@ func manual_interaction_check(delta: float):
 				# already prevents it) so LMB can never damage the player.
 				_mining_progress = 0.0
 				_mining_blocked = false
+				_mining_overlay_visible = false
 				var item = ItemDatabase.get_item(selected_block_id)
 				var dmg = 10.0
 				if item: dmg += item.damage_value
@@ -837,6 +1032,7 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 		if not _mining_blocked:
 			_mining_blocked = true
 			show_message("Bedrock -- нельзя разрушить")
+		_mining_overlay_visible = false
 		return
 
 	if block_coord != _mining_block:
@@ -854,11 +1050,18 @@ func _process_mining(delta: float, voxel_world, point: Vector3, normal: Vector3)
 	_mining_progress += delta
 
 	var break_speed = get_break_speed(selected_block_id, block_type)
+	# Crack overlay progress (see _update_mining_crack_overlay()) -- reflects
+	# progress toward THIS break_speed even before it completes, so the
+	# overlay visibly grows across multiple frames of holding LMB.
+	_mining_overlay_visible = true
+	_mining_overlay_cell = block_coord
+	_mining_overlay_fraction = clamp(_mining_progress / break_speed, 0.0, 1.0)
 	if _mining_progress < break_speed:
 		return # still mid-hold -- not broken yet
 
 	_mining_progress = 0.0
 	_mining_target_hysteresis = 0.0
+	_mining_overlay_visible = false
 
 	_drop_item_for_block(block_type)
 	ActionLog.log_event("Сломан блок: " + _block_display_name(block_type))
@@ -951,6 +1154,19 @@ const BREAK_SPEED_DEFAULT = 0.2
 const BREAK_SPEED_WITH_TOOL = 0.1
 const BREAK_SPEED_WITHOUT_TOOL = 0.5
 
+# Tool tier -> break speed (seconds of holding LMB) when the held tool's
+# tool_type matches the target block's category (see ItemDatabase.
+# BLOCK_TOOL_CATEGORY / get_block_category()). Higher tier = lower time =
+# faster mining -- Wood(1) < Stone(2) < Iron(3), matching ItemData.tier set
+# in ItemDatabase.gd (IDs 30-33 Wood, 87-93 Stone/Iron). A tier-0 "tool"
+# matching a category (shouldn't normally happen -- swords never have a
+# tool_type) falls back to the old flat BREAK_SPEED_WITH_TOOL.
+const BREAK_SPEED_BY_TIER = {
+	1: 0.12, # Wood
+	2: 0.07, # Stone
+	3: 0.04, # Iron
+}
+
 func get_break_speed(held_item_id: int, block_type: int) -> float:
 	var category = ItemDatabase.get_block_category(block_type)
 	if category == "":
@@ -958,7 +1174,7 @@ func get_break_speed(held_item_id: int, block_type: int) -> float:
 
 	var item = ItemDatabase.get_item(held_item_id)
 	if item and item.type == 1 and item.tool_type == category: # ItemType.TOOL
-		return BREAK_SPEED_WITH_TOOL
+		return BREAK_SPEED_BY_TIER.get(item.tier, BREAK_SPEED_WITH_TOOL)
 	return BREAK_SPEED_WITHOUT_TOOL
 
 ## Human-readable name for a raw block/voxel id, for ActionLog lines. Most
@@ -1033,9 +1249,9 @@ func _on_death(cause: String = "damage"):
 	else:
 		# Defensive fallback for contexts without the full HUD (see
 		# setup_nodes()) so death is never silent even there.
-		show_message(reason + " -- Respawning...")
+		show_message(reason + " -- Возрождение...")
 
-	ActionLog.log_event("☠ Погиб: " + reason)
+	ActionLog.log_event("Погиб: " + reason)
 	SoundCaptions.caption("[Смерть]")
 	Telemetry.log_event("death", {"cause": cause})
 

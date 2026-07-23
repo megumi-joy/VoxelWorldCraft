@@ -84,19 +84,19 @@ offset_top = 14.0
 offset_right = -14.0
 offset_bottom = 67.0
 grow_horizontal = 0
-text = "MANUAL"
+text = "ВРУЧНУЮ"
 
 [node name="SettingsButton" type="Button" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -76.0
+offset_left = -186.0
 offset_top = 86.0
-offset_right = -20.0
-offset_bottom = 142.0
+offset_right = -14.0
+offset_bottom = 138.0
 grow_horizontal = 0
-text = "⚙"
+text = "Настройки"
 
 [node name="MessageLabel" type="Label" parent="."]
 layout_mode = 1
@@ -153,13 +153,13 @@ alignment = 1
 [node name="CauseLabel" type="Label" parent="DeathOverlay/VBox"]
 layout_mode = 2
 mouse_filter = 2
-text = "YOU DIED"
+text = "ВЫ ПОГИБЛИ"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="RespawnLabel" type="Label" parent="DeathOverlay/VBox"]
 layout_mode = 2
 mouse_filter = 2
-text = "Respawning..."
+text = "Возрождение..."
 horizontal_alignment = 1
 vertical_alignment = 1
